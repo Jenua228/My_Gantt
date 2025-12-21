@@ -1,3 +1,21 @@
-flask==3.0.0
-flask-cors==4.0.0
-sqlalchemy==2.0.23
+# Main dependencies
+Flask==3.0.0
+Flask-Cors==4.0.0
+SQLAlchemy==2.0.23
+
+# Flask dependencies
+Werkzeug==3.1.4
+Jinja2==3.1.6
+itsdangerous==2.2.0
+click==8.3.1
+blinker==1.9.0
+
+# Jinja2 dependencies
+MarkupSafe==3.0.3
+
+# Click dependencies (Windows)
+colorama==0.4.6
+
+# SQLAlchemy dependencies
+greenlet==3.3.0
+typing_extensions==4.15.0
