@@ -113,69 +113,169 @@
                   <polyline points="15 3 21 3 21 9" />
                   <line x1="10" y1="14" x2="21" y2="3" />
                 </svg>
-                Task Connections (Optional)
+                Task Connections
               </div>
               
-              <!-- Parent Connection (Arrow FROM another task TO this task) -->
+              <!-- Parent Connections (Arrows FROM other tasks TO this task) -->
               <div class="connection-box">
-                <div class="connection-label">
-                  <span class="arrow-icon">→</span>
-                  Parent Task (arrow comes FROM)
-                </div>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label>Select Parent Task</label>
-                    <select v-model="taskForm.parent_task_id">
-                      <option :value="null">— None —</option>
-                      <option 
-                        v-for="task in availableParentTasks" 
-                        :key="task.id" 
-                        :value="task.id"
-                      >
-                        {{ task.title }}
-                      </option>
-                    </select>
+                <div 
+                  class="connection-header" 
+                  @click="parentConnectionsExpanded = !parentConnectionsExpanded"
+                >
+                  <div class="connection-label">
+                    <span class="arrow-icon">→</span>
+                    <span>Parent Tasks</span>
+                    <span class="connection-count" v-if="existingParentConnections.length">
+                      {{ existingParentConnections.length }}
+                    </span>
                   </div>
-                  <div class="form-group">
-                    <label>Connection Type</label>
-                    <select v-model="taskForm.parent_connection_type" :disabled="!taskForm.parent_task_id">
-                      <option value="finish-to-start">Finish → Start</option>
-                      <option value="finish-to-finish">Finish → Finish</option>
-                      <option value="start-to-start">Start → Start</option>
-                      <option value="start-to-finish">Start → Finish</option>
-                    </select>
+                  <svg 
+                    class="expand-icon" 
+                    :class="{ expanded: parentConnectionsExpanded }"
+                    width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </div>
+                
+                <div v-show="parentConnectionsExpanded" class="connection-content">
+                  <!-- Existing parent connections list -->
+                  <div v-if="existingParentConnections.length" class="connections-list">
+                    <div 
+                      v-for="conn in existingParentConnections" 
+                      :key="conn.id" 
+                      class="connection-item"
+                    >
+                      <div class="connection-item-info">
+                        <span 
+                          class="connection-task-name" 
+                          :style="{ borderLeftColor: getTaskById(conn.from_task_id)?.color }"
+                        >
+                          {{ getTaskById(conn.from_task_id)?.title || 'Unknown' }}
+                        </span>
+                        <span class="connection-type-badge">{{ formatConnectionType(conn.arrow_type) }}</span>
+                      </div>
+                      <button 
+                        class="btn-remove" 
+                        @click="removeParentConnection(conn.id)"
+                        title="Remove connection"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div v-else class="no-connections">No parent connections</div>
+                  
+                  <!-- Add new parent connection -->
+                  <div class="add-connection">
+                    <div class="add-connection-title">Add Parent:</div>
+                    <div class="form-row">
+                      <div class="form-group">
+                        <select v-model="taskForm.parent_task_id">
+                          <option :value="null">— Select task —</option>
+                          <option 
+                            v-for="task in availableParentTasks" 
+                            :key="task.id" 
+                            :value="task.id"
+                          >
+                            {{ task.title }}
+                          </option>
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <select v-model="taskForm.parent_connection_type" :disabled="!taskForm.parent_task_id">
+                          <option value="finish-to-start">Finish → Start</option>
+                          <option value="finish-to-finish">Finish → Finish</option>
+                          <option value="start-to-start">Start → Start</option>
+                          <option value="start-to-finish">Start → Finish</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
               
-              <!-- Child Connection (Arrow FROM this task TO another task) -->
+              <!-- Child Connections (Arrows FROM this task TO other tasks) -->
               <div class="connection-box">
-                <div class="connection-label">
-                  <span class="arrow-icon">←</span>
-                  Child Task (arrow goes TO)
-                </div>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label>Select Child Task</label>
-                    <select v-model="taskForm.child_task_id">
-                      <option :value="null">— None —</option>
-                      <option 
-                        v-for="task in availableChildTasks" 
-                        :key="task.id" 
-                        :value="task.id"
-                      >
-                        {{ task.title }}
-                      </option>
-                    </select>
+                <div 
+                  class="connection-header" 
+                  @click="childConnectionsExpanded = !childConnectionsExpanded"
+                >
+                  <div class="connection-label">
+                    <span class="arrow-icon">←</span>
+                    <span>Child Tasks</span>
+                    <span class="connection-count" v-if="existingChildConnections.length">
+                      {{ existingChildConnections.length }}
+                    </span>
                   </div>
-                  <div class="form-group">
-                    <label>Connection Type</label>
-                    <select v-model="taskForm.child_connection_type" :disabled="!taskForm.child_task_id">
-                      <option value="finish-to-start">Finish → Start</option>
-                      <option value="finish-to-finish">Finish → Finish</option>
-                      <option value="start-to-start">Start → Start</option>
-                      <option value="start-to-finish">Start → Finish</option>
-                    </select>
+                  <svg 
+                    class="expand-icon" 
+                    :class="{ expanded: childConnectionsExpanded }"
+                    width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </div>
+                
+                <div v-show="childConnectionsExpanded" class="connection-content">
+                  <!-- Existing child connections list -->
+                  <div v-if="existingChildConnections.length" class="connections-list">
+                    <div 
+                      v-for="conn in existingChildConnections" 
+                      :key="conn.id" 
+                      class="connection-item"
+                    >
+                      <div class="connection-item-info">
+                        <span 
+                          class="connection-task-name" 
+                          :style="{ borderLeftColor: getTaskById(conn.to_task_id)?.color }"
+                        >
+                          {{ getTaskById(conn.to_task_id)?.title || 'Unknown' }}
+                        </span>
+                        <span class="connection-type-badge">{{ formatConnectionType(conn.arrow_type) }}</span>
+                      </div>
+                      <button 
+                        class="btn-remove" 
+                        @click="removeChildConnection(conn.id)"
+                        title="Remove connection"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div v-else class="no-connections">No child connections</div>
+                  
+                  <!-- Add new child connection -->
+                  <div class="add-connection">
+                    <div class="add-connection-title">Add Child:</div>
+                    <div class="form-row">
+                      <div class="form-group">
+                        <select v-model="taskForm.child_task_id">
+                          <option :value="null">— Select task —</option>
+                          <option 
+                            v-for="task in availableChildTasks" 
+                            :key="task.id" 
+                            :value="task.id"
+                          >
+                            {{ task.title }}
+                          </option>
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <select v-model="taskForm.child_connection_type" :disabled="!taskForm.child_task_id">
+                          <option value="finish-to-start">Finish → Start</option>
+                          <option value="finish-to-finish">Finish → Finish</option>
+                          <option value="start-to-start">Start → Start</option>
+                          <option value="start-to-finish">Start → Finish</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -258,6 +358,8 @@ const showTaskModal = ref(false)
 const showConnectionModal = ref(false)
 const editingTask = ref(null)
 const editingConnection = ref(null)
+const parentConnectionsExpanded = ref(true)
+const childConnectionsExpanded = ref(true)
 
 const timeScales = [
   { label: 'Hour', value: 'hour' },
@@ -287,14 +389,71 @@ const connectionForm = reactive({
   arrow_type: 'finish-to-start'
 })
 
-// Available tasks for parent/child selection (exclude current task when editing)
+// Available tasks for parent/child selection (exclude current task and already connected tasks)
 const availableParentTasks = computed(() => {
-  return tasks.value.filter(t => !editingTask.value || t.id !== editingTask.value.id)
+  if (!editingTask.value) {
+    return tasks.value
+  }
+  const existingParentIds = existingParentConnections.value.map(c => c.from_task_id)
+  return tasks.value.filter(t => 
+    t.id !== editingTask.value.id && !existingParentIds.includes(t.id)
+  )
 })
 
 const availableChildTasks = computed(() => {
-  return tasks.value.filter(t => !editingTask.value || t.id !== editingTask.value.id)
+  if (!editingTask.value) {
+    return tasks.value
+  }
+  const existingChildIds = existingChildConnections.value.map(c => c.to_task_id)
+  return tasks.value.filter(t => 
+    t.id !== editingTask.value.id && !existingChildIds.includes(t.id)
+  )
 })
+
+// Existing connections for the editing task
+const existingParentConnections = computed(() => {
+  if (!editingTask.value) return []
+  return connections.value.filter(c => c.to_task_id === editingTask.value.id)
+})
+
+const existingChildConnections = computed(() => {
+  if (!editingTask.value) return []
+  return connections.value.filter(c => c.from_task_id === editingTask.value.id)
+})
+
+// Helper functions
+const getTaskById = (id) => {
+  return tasks.value.find(t => t.id === id)
+}
+
+const formatConnectionType = (type) => {
+  const types = {
+    'finish-to-start': 'Finish → Start',
+    'start-to-start': 'Start → Start',
+    'finish-to-finish': 'Finish → Finish',
+    'start-to-finish': 'Start → Finish'
+  }
+  return types[type] || type
+}
+
+// Remove connection functions
+const removeParentConnection = async (connectionId) => {
+  try {
+    await connectionApi.delete(connectionId)
+    await loadTasks()
+  } catch (error) {
+    console.error('Failed to remove parent connection:', error)
+  }
+}
+
+const removeChildConnection = async (connectionId) => {
+  try {
+    await connectionApi.delete(connectionId)
+    await loadTasks()
+  } catch (error) {
+    console.error('Failed to remove child connection:', error)
+  }
+}
 
 const resetTaskForm = () => {
   const now = new Date()
@@ -361,7 +520,7 @@ const saveTask = async () => {
       savedTask = response.data
     }
     
-    // Create parent connection if selected
+    // Create new parent connection if selected
     if (taskForm.parent_task_id) {
       try {
         await connectionApi.create({
@@ -375,7 +534,7 @@ const saveTask = async () => {
       }
     }
     
-    // Create child connection if selected
+    // Create new child connection if selected
     if (taskForm.child_task_id) {
       try {
         await connectionApi.create({
@@ -423,10 +582,17 @@ const editTask = (task) => {
   taskForm.progress = task.progress
   taskForm.color = task.color
   taskForm.row_index = task.row_index
+  
+  // Reset connection fields (existing connections shown in list, these are for adding new)
   taskForm.parent_task_id = null
   taskForm.parent_connection_type = 'finish-to-start'
   taskForm.child_task_id = null
   taskForm.child_connection_type = 'finish-to-start'
+  
+  // Expand connections sections if there are existing connections
+  parentConnectionsExpanded.value = true
+  childConnectionsExpanded.value = true
+  
   showTaskModal.value = true
 }
 
@@ -702,5 +868,146 @@ onMounted(() => {
 .connection-box select:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Expandable connection sections */
+.connection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 4px 0;
+  margin: -4px 0;
+}
+
+.connection-header:hover {
+  opacity: 0.8;
+}
+
+.connection-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0;
+}
+
+.connection-count {
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.expand-icon {
+  transition: transform 0.2s ease;
+  color: var(--text-secondary);
+}
+
+.expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.connection-content {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.connections-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.connection-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.connection-item-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.connection-task-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  padding-left: 10px;
+  border-left: 3px solid var(--accent-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.connection-type-badge {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.btn-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.btn-remove:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger);
+}
+
+.no-connections {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 12px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+}
+
+.add-connection {
+  padding-top: 8px;
+}
+
+.add-connection-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.add-connection .form-row {
+  gap: 8px;
+}
+
+.add-connection .form-group {
+  margin-bottom: 0;
 }
 </style>
