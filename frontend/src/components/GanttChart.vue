@@ -57,6 +57,7 @@
               paddingLeft: task.parent_id ? '36px' : '20px'
             }"
             @click="handleSidebarTaskClick($event, task)"
+            @dblclick.stop="$emit('edit-task', task)"
           >
             <!-- Expand/Collapse button for parents -->
             <button 
@@ -1055,31 +1056,56 @@ const formatConnectionTypeShort = (type) => {
 }
 
 // Get predecessors (tasks that have arrows TO this task)
+// Uses the same redirection logic as visibleConnections
 const getTaskPredecessors = (taskId) => {
-  return props.connections
-    .filter(c => c.to_task_id === taskId)
-    .map(c => {
-      const task = tasksMap.value.get(c.from_task_id)
-      return {
-        id: c.id,
-        taskName: task?.title || 'Неизвестно',
-        type: formatConnectionTypeShort(c.arrow_type)
+  const result = []
+  const seen = new Set()
+  
+  // Check if this task is a child of an expanded parent - if so, it may inherit parent's connections
+  const task = tasksMap.value.get(taskId)
+  const parentId = task?.parent_id
+  const parentIsExpanded = parentId && expandedTaskIds.value.has(parentId)
+  
+  visibleConnections.value.forEach(conn => {
+    if (conn.to_task_id === taskId) {
+      const fromTask = tasksMap.value.get(conn.from_task_id)
+      const key = `${conn.from_task_id}-${conn.arrow_type}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        result.push({
+          id: conn.id,
+          taskName: fromTask?.title || 'Неизвестно',
+          type: formatConnectionTypeShort(conn.arrow_type)
+        })
       }
-    })
+    }
+  })
+  
+  return result
 }
 
 // Get successors (tasks that this task has arrows TO)
+// Uses the same redirection logic as visibleConnections
 const getTaskSuccessors = (taskId) => {
-  return props.connections
-    .filter(c => c.from_task_id === taskId)
-    .map(c => {
-      const task = tasksMap.value.get(c.to_task_id)
-      return {
-        id: c.id,
-        taskName: task?.title || 'Неизвестно',
-        type: formatConnectionTypeShort(c.arrow_type)
+  const result = []
+  const seen = new Set()
+  
+  visibleConnections.value.forEach(conn => {
+    if (conn.from_task_id === taskId) {
+      const toTask = tasksMap.value.get(conn.to_task_id)
+      const key = `${conn.to_task_id}-${conn.arrow_type}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        result.push({
+          id: conn.id,
+          taskName: toTask?.title || 'Неизвестно',
+          type: formatConnectionTypeShort(conn.arrow_type)
+        })
       }
-    })
+    }
+  })
+  
+  return result
 }
 
 const getTaskTooltip = (task) => {
@@ -1251,14 +1277,20 @@ const handleContainerClick = (event) => {
 // Handle sidebar task click with shift
 const handleSidebarTaskClick = (event, task) => {
   if (event.shiftKey) {
+    // Shift+click: toggle in selection
     if (selectedTaskIds.value.has(task.id)) {
       selectedTaskIds.value.delete(task.id)
     } else {
       selectedTaskIds.value.add(task.id)
     }
   } else {
-    selectedTaskIds.value.clear()
-    selectedTaskIds.value.add(task.id)
+    // Regular click: toggle if already selected, otherwise select only this
+    if (selectedTaskIds.value.has(task.id)) {
+      selectedTaskIds.value.delete(task.id)
+    } else {
+      selectedTaskIds.value.clear()
+      selectedTaskIds.value.add(task.id)
+    }
   }
 }
 
@@ -1737,6 +1769,8 @@ onUnmounted(() => {
 .sidebar-content {
   flex: 1;
   overflow-y: auto;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .sidebar-task {
@@ -1749,6 +1783,8 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--border-subtle);
   transition: all 0.15s ease;
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .sidebar-task:hover {
