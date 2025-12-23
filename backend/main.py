@@ -31,6 +31,7 @@ def task_to_dict(task):
         "progress": task.progress,
         "color": task.color,
         "row_index": task.row_index,
+        "parent_id": task.parent_id,
         "created_at": task.created_at.isoformat() if task.created_at else None,
         "updated_at": task.updated_at.isoformat() if task.updated_at else None,
         "outgoing_connections": [conn_to_dict(c) for c in task.outgoing_connections],
@@ -89,7 +90,8 @@ def create_task():
             end_date=datetime.fromisoformat(data.get("end_date").replace("Z", "+00:00")) if data.get("end_date") else None,
             progress=data.get("progress", 0),
             color=data.get("color", "#4A90D9"),
-            row_index=data.get("row_index", 0)
+            row_index=data.get("row_index", 0),
+            parent_id=data.get("parent_id")
         )
         db.add(db_task)
         db.commit()
@@ -124,6 +126,10 @@ def update_task(task_id):
             db_task.color = data["color"]
         if "row_index" in data:
             db_task.row_index = data["row_index"]
+        if "parent_id" in data:
+            # Prevent circular reference
+            if data["parent_id"] != task_id:
+                db_task.parent_id = data["parent_id"]
         
         db_task.updated_at = datetime.utcnow()
         db.commit()
@@ -256,6 +262,20 @@ def seed_demo_data():
         db.query(models.Task).delete()
         db.commit()
         
+        # Create parent tasks first
+        parent_dev = models.Task(
+            title="Development Phase",
+            description="All development work",
+            start_date=datetime(2024, 2, 1),
+            end_date=datetime(2024, 3, 20),
+            progress=40,
+            color="#673AB7",
+            row_index=0
+        )
+        db.add(parent_dev)
+        db.commit()
+        db.refresh(parent_dev)
+        
         # Create demo tasks
         tasks = [
             models.Task(
@@ -283,7 +303,8 @@ def seed_demo_data():
                 end_date=datetime(2024, 3, 15),
                 progress=50,
                 color="#9C27B0",
-                row_index=2
+                row_index=2,
+                parent_id=parent_dev.id
             ),
             models.Task(
                 title="Frontend Development",
@@ -292,7 +313,8 @@ def seed_demo_data():
                 end_date=datetime(2024, 3, 20),
                 progress=30,
                 color="#FF9800",
-                row_index=3
+                row_index=3,
+                parent_id=parent_dev.id
             ),
             models.Task(
                 title="Testing",
@@ -338,7 +360,7 @@ def seed_demo_data():
         
         return jsonify({
             "message": "Demo data seeded successfully",
-            "tasks_created": len(tasks),
+            "tasks_created": len(tasks) + 1,
             "connections_created": len(connections)
         })
     finally:

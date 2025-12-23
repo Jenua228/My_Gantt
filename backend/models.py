@@ -15,8 +15,13 @@ class Task(Base):
     progress = Column(Float, default=0.0)  # 0-100%
     color = Column(String(50), default="#4A90D9")
     row_index = Column(Integer, default=0)
+    parent_id = Column(Integer, ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Parent-child relationship
+    parent = relationship("Task", remote_side=[id], back_populates="children")
+    children = relationship("Task", back_populates="parent", cascade="all")
 
     # Relationships for connections
     outgoing_connections = relationship(

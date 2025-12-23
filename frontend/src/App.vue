@@ -7,7 +7,7 @@
           <rect x="3" y="10" width="14" height="4" rx="1" />
           <rect x="3" y="16" width="10" height="4" rx="1" />
         </svg>
-        <span>Gantt Scheduler</span>
+        <span>Диаграмма Ганта</span>
       </div>
       
       <div class="header-controls">
@@ -27,7 +27,7 @@
             <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
             <path d="M3 3v5h5" />
           </svg>
-          Load Demo
+          Демо-данные
         </button>
         
         <button class="btn btn-primary" @click="openCreateTaskModal">
@@ -35,7 +35,7 @@
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          Add Task
+          Добавить задачу
         </button>
       </div>
     </header>
@@ -46,6 +46,7 @@
         :connections="connections"
         :scale="currentScale"
         @update-task="updateTask"
+        @update-task-live="updateTaskLive"
         @delete-task="deleteTask"
         @create-connection="createConnection"
         @delete-connection="deleteConnection"
@@ -59,7 +60,7 @@
       <div v-if="showTaskModal" class="modal-overlay" @click.self="closeTaskModal">
         <div class="modal modal-lg">
           <div class="modal-header">
-            <h2>{{ editingTask ? 'Edit Task' : 'New Task' }}</h2>
+            <h2>{{ editingTask ? 'Редактирование задачи' : 'Новая задача' }}</h2>
             <button class="btn btn-icon" @click="closeTaskModal">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -70,33 +71,33 @@
           
           <div class="modal-body">
             <div class="form-group">
-              <label>Task Title</label>
-              <input v-model="taskForm.title" type="text" placeholder="Enter task title" />
+              <label>Название задачи</label>
+              <input v-model="taskForm.title" type="text" placeholder="Введите название" />
             </div>
             
             <div class="form-group">
-              <label>Description</label>
-              <textarea v-model="taskForm.description" rows="2" placeholder="Optional description"></textarea>
+              <label>Описание</label>
+              <textarea v-model="taskForm.description" rows="2" placeholder="Необязательное описание"></textarea>
             </div>
             
             <div class="form-row">
               <div class="form-group">
-                <label>Start Date</label>
+                <label>Дата начала</label>
                 <input v-model="taskForm.start_date" type="datetime-local" />
               </div>
               <div class="form-group">
-                <label>End Date</label>
+                <label>Дата окончания</label>
                 <input v-model="taskForm.end_date" type="datetime-local" />
               </div>
             </div>
             
             <div class="form-row">
               <div class="form-group">
-                <label>Progress ({{ taskForm.progress }}%)</label>
+                <label>Прогресс ({{ taskForm.progress }}%)</label>
                 <input v-model.number="taskForm.progress" type="range" min="0" max="100" />
               </div>
               <div class="form-group">
-                <label>Color</label>
+                <label>Цвет</label>
                 <div class="color-picker-wrapper">
                   <div class="color-preview" :style="{ backgroundColor: taskForm.color }"></div>
                   <input v-model="taskForm.color" type="color" />
@@ -105,7 +106,23 @@
               </div>
             </div>
             
-            <!-- Connection Section -->
+            <!-- Parent Task (Hierarchy) Section -->
+            <div class="form-group">
+              <label>Родительская задача (иерархия)</label>
+              <select v-model="taskForm.parent_id">
+                <option :value="null">— Нет родителя (корневая задача) —</option>
+                <option 
+                  v-for="task in availableHierarchyParents" 
+                  :key="task.id" 
+                  :value="task.id"
+                >
+                  {{ task.title }}
+                </option>
+              </select>
+              <span class="form-hint">Подзадача будет сгруппирована под родителем</span>
+            </div>
+            
+            <!-- Connection Section (Arrows) -->
             <div class="form-section">
               <div class="section-title">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -113,7 +130,7 @@
                   <polyline points="15 3 21 3 21 9" />
                   <line x1="10" y1="14" x2="21" y2="3" />
                 </svg>
-                Task Connections
+                Связи задачи
               </div>
               
               <!-- Parent Connections (Arrows FROM other tasks TO this task) -->
@@ -124,7 +141,7 @@
                 >
                   <div class="connection-label">
                     <span class="arrow-icon">→</span>
-                    <span>Parent Tasks</span>
+                    <span>Предшественники</span>
                     <span class="connection-count" v-if="existingParentConnections.length">
                       {{ existingParentConnections.length }}
                     </span>
@@ -158,7 +175,7 @@
                       <button 
                         class="btn-remove" 
                         @click="removeParentConnection(conn.id)"
-                        title="Remove connection"
+                        title="Удалить связь"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                           <line x1="18" y1="6" x2="6" y2="18" />
@@ -167,15 +184,15 @@
                       </button>
                     </div>
                   </div>
-                  <div v-else class="no-connections">No parent connections</div>
+                  <div v-else class="no-connections">Нет предшествующих связей</div>
                   
                   <!-- Add new parent connection -->
                   <div class="add-connection">
-                    <div class="add-connection-title">Add Parent:</div>
+                    <div class="add-connection-title">Добавить предшественника:</div>
                     <div class="form-row">
                       <div class="form-group">
-                        <select v-model="taskForm.parent_task_id">
-                          <option :value="null">— Select task —</option>
+                        <select v-model="taskForm.conn_parent_task_id">
+                          <option :value="null">— Выберите задачу —</option>
                           <option 
                             v-for="task in availableParentTasks" 
                             :key="task.id" 
@@ -186,11 +203,11 @@
                         </select>
                       </div>
                       <div class="form-group">
-                        <select v-model="taskForm.parent_connection_type" :disabled="!taskForm.parent_task_id">
-                          <option value="finish-to-start">Finish → Start</option>
-                          <option value="finish-to-finish">Finish → Finish</option>
-                          <option value="start-to-start">Start → Start</option>
-                          <option value="start-to-finish">Start → Finish</option>
+                        <select v-model="taskForm.conn_parent_connection_type" :disabled="!taskForm.conn_parent_task_id">
+                          <option value="finish-to-start">Окончание → Начало</option>
+                          <option value="finish-to-finish">Окончание → Окончание</option>
+                          <option value="start-to-start">Начало → Начало</option>
+                          <option value="start-to-finish">Начало → Окончание</option>
                         </select>
                       </div>
                     </div>
@@ -206,7 +223,7 @@
                 >
                   <div class="connection-label">
                     <span class="arrow-icon">←</span>
-                    <span>Child Tasks</span>
+                    <span>Последователи</span>
                     <span class="connection-count" v-if="existingChildConnections.length">
                       {{ existingChildConnections.length }}
                     </span>
@@ -240,7 +257,7 @@
                       <button 
                         class="btn-remove" 
                         @click="removeChildConnection(conn.id)"
-                        title="Remove connection"
+                        title="Удалить связь"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                           <line x1="18" y1="6" x2="6" y2="18" />
@@ -249,15 +266,15 @@
                       </button>
                     </div>
                   </div>
-                  <div v-else class="no-connections">No child connections</div>
+                  <div v-else class="no-connections">Нет последующих связей</div>
                   
                   <!-- Add new child connection -->
                   <div class="add-connection">
-                    <div class="add-connection-title">Add Child:</div>
+                    <div class="add-connection-title">Добавить последователя:</div>
                     <div class="form-row">
                       <div class="form-group">
-                        <select v-model="taskForm.child_task_id">
-                          <option :value="null">— Select task —</option>
+                        <select v-model="taskForm.conn_child_task_id">
+                          <option :value="null">— Выберите задачу —</option>
                           <option 
                             v-for="task in availableChildTasks" 
                             :key="task.id" 
@@ -268,11 +285,11 @@
                         </select>
                       </div>
                       <div class="form-group">
-                        <select v-model="taskForm.child_connection_type" :disabled="!taskForm.child_task_id">
-                          <option value="finish-to-start">Finish → Start</option>
-                          <option value="finish-to-finish">Finish → Finish</option>
-                          <option value="start-to-start">Start → Start</option>
-                          <option value="start-to-finish">Start → Finish</option>
+                        <select v-model="taskForm.conn_child_connection_type" :disabled="!taskForm.conn_child_task_id">
+                          <option value="finish-to-start">Окончание → Начало</option>
+                          <option value="finish-to-finish">Окончание → Окончание</option>
+                          <option value="start-to-start">Начало → Начало</option>
+                          <option value="start-to-finish">Начало → Окончание</option>
                         </select>
                       </div>
                     </div>
@@ -283,9 +300,9 @@
           </div>
           
           <div class="modal-footer">
-            <button class="btn btn-secondary" @click="closeTaskModal">Cancel</button>
+            <button class="btn btn-secondary" @click="closeTaskModal">Отмена</button>
             <button class="btn btn-primary" @click="saveTask">
-              {{ editingTask ? 'Update' : 'Create' }} Task
+              {{ editingTask ? 'Сохранить' : 'Создать' }}
             </button>
           </div>
         </div>
@@ -297,7 +314,7 @@
       <div v-if="showConnectionModal" class="modal-overlay" @click.self="closeConnectionModal">
         <div class="modal modal-sm">
           <div class="modal-header">
-            <h2>Edit Connection</h2>
+            <h2>Редактирование связи</h2>
             <button class="btn btn-icon" @click="closeConnectionModal">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -308,7 +325,7 @@
           
           <div class="modal-body">
             <div class="form-group">
-              <label>Arrow Color</label>
+              <label>Цвет стрелки</label>
               <div class="color-picker-wrapper">
                 <div class="color-preview" :style="{ backgroundColor: connectionForm.arrow_color }"></div>
                 <input v-model="connectionForm.arrow_color" type="color" />
@@ -317,28 +334,28 @@
             </div>
             
             <div class="form-group">
-              <label>Arrow Style</label>
+              <label>Стиль линии</label>
               <select v-model="connectionForm.arrow_style">
-                <option value="solid">Solid</option>
-                <option value="dashed">Dashed</option>
-                <option value="dotted">Dotted</option>
+                <option value="solid">Сплошная</option>
+                <option value="dashed">Пунктирная</option>
+                <option value="dotted">Точечная</option>
               </select>
             </div>
             
             <div class="form-group">
-              <label>Connection Type</label>
+              <label>Тип связи</label>
               <select v-model="connectionForm.arrow_type">
-                <option value="finish-to-start">Finish → Start</option>
-                <option value="start-to-start">Start → Start</option>
-                <option value="finish-to-finish">Finish → Finish</option>
-                <option value="start-to-finish">Start → Finish</option>
+                <option value="finish-to-start">Окончание → Начало</option>
+                <option value="start-to-start">Начало → Начало</option>
+                <option value="finish-to-finish">Окончание → Окончание</option>
+                <option value="start-to-finish">Начало → Окончание</option>
               </select>
             </div>
           </div>
           
           <div class="modal-footer">
-            <button class="btn btn-secondary" @click="closeConnectionModal">Cancel</button>
-            <button class="btn btn-primary" @click="saveConnection">Update</button>
+            <button class="btn btn-secondary" @click="closeConnectionModal">Отмена</button>
+            <button class="btn btn-primary" @click="saveConnection">Сохранить</button>
           </div>
         </div>
       </div>
@@ -347,13 +364,20 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import GanttChart from './components/GanttChart.vue'
 import { taskApi, connectionApi } from './api'
 
 const tasks = ref([])
 const connections = ref([])
 const currentScale = ref('day')
+
+// Map for O(1) task lookup
+const tasksMap = computed(() => {
+  const map = new Map()
+  tasks.value.forEach(t => map.set(t.id, t))
+  return map
+})
 const showTaskModal = ref(false)
 const showConnectionModal = ref(false)
 const editingTask = ref(null)
@@ -362,10 +386,9 @@ const parentConnectionsExpanded = ref(true)
 const childConnectionsExpanded = ref(true)
 
 const timeScales = [
-  { label: 'Hour', value: 'hour' },
-  { label: 'Day', value: 'day' },
-  { label: 'Week', value: 'week' },
-  { label: 'Month', value: 'month' }
+  { label: 'День', value: 'day' },
+  { label: 'Неделя', value: 'week' },
+  { label: 'Месяц', value: 'month' }
 ]
 
 const taskForm = reactive({
@@ -376,11 +399,12 @@ const taskForm = reactive({
   progress: 0,
   color: '#4A90D9',
   row_index: 0,
-  // Connection fields
-  parent_task_id: null,
-  parent_connection_type: 'finish-to-start',
-  child_task_id: null,
-  child_connection_type: 'finish-to-start'
+  parent_id: null, // Parent task for hierarchy
+  // Connection fields (arrows)
+  conn_parent_task_id: null,
+  conn_parent_connection_type: 'finish-to-start',
+  conn_child_task_id: null,
+  conn_child_connection_type: 'finish-to-start'
 })
 
 const connectionForm = reactive({
@@ -389,7 +413,20 @@ const connectionForm = reactive({
   arrow_type: 'finish-to-start'
 })
 
-// Available tasks for parent/child selection (exclude current task and already connected tasks)
+// Available tasks for hierarchy parent selection (can't be self or own children)
+const availableHierarchyParents = computed(() => {
+  if (!editingTask.value) {
+    // For new tasks, any task without a parent can be a parent
+    return tasks.value.filter(t => !t.parent_id)
+  }
+  // For existing task: exclude self and own children (to prevent circular reference)
+  const childIds = new Set(tasks.value.filter(t => t.parent_id === editingTask.value.id).map(t => t.id))
+  return tasks.value.filter(t => 
+    t.id !== editingTask.value.id && !childIds.has(t.id)
+  )
+})
+
+// Available tasks for parent/child connection (arrows) selection (exclude current task and already connected tasks)
 const availableParentTasks = computed(() => {
   if (!editingTask.value) {
     return tasks.value
@@ -421,9 +458,9 @@ const existingChildConnections = computed(() => {
   return connections.value.filter(c => c.from_task_id === editingTask.value.id)
 })
 
-// Helper functions
+// Helper functions - O(1) lookup using Map
 const getTaskById = (id) => {
-  return tasks.value.find(t => t.id === id)
+  return tasksMap.value.get(id)
 }
 
 const formatConnectionType = (type) => {
@@ -466,10 +503,11 @@ const resetTaskForm = () => {
   taskForm.progress = 0
   taskForm.color = '#4A90D9'
   taskForm.row_index = tasks.value.length
-  taskForm.parent_task_id = null
-  taskForm.parent_connection_type = 'finish-to-start'
-  taskForm.child_task_id = null
-  taskForm.child_connection_type = 'finish-to-start'
+  taskForm.parent_id = null
+  taskForm.conn_parent_task_id = null
+  taskForm.conn_parent_connection_type = 'finish-to-start'
+  taskForm.conn_child_task_id = null
+  taskForm.conn_child_connection_type = 'finish-to-start'
 }
 
 const loadTasks = async () => {
@@ -508,7 +546,8 @@ const saveTask = async () => {
       end_date: new Date(taskForm.end_date).toISOString(),
       progress: taskForm.progress,
       color: taskForm.color,
-      row_index: taskForm.row_index
+      row_index: taskForm.row_index,
+      parent_id: taskForm.parent_id
     }
     
     let savedTask
@@ -520,13 +559,13 @@ const saveTask = async () => {
       savedTask = response.data
     }
     
-    // Create new parent connection if selected
-    if (taskForm.parent_task_id) {
+    // Create new parent connection (arrow) if selected
+    if (taskForm.conn_parent_task_id) {
       try {
         await connectionApi.create({
-          from_task_id: taskForm.parent_task_id,
+          from_task_id: taskForm.conn_parent_task_id,
           to_task_id: savedTask.id,
-          arrow_type: taskForm.parent_connection_type,
+          arrow_type: taskForm.conn_parent_connection_type,
           arrow_color: taskForm.color
         })
       } catch (e) {
@@ -534,13 +573,13 @@ const saveTask = async () => {
       }
     }
     
-    // Create new child connection if selected
-    if (taskForm.child_task_id) {
+    // Create new child connection (arrow) if selected
+    if (taskForm.conn_child_task_id) {
       try {
         await connectionApi.create({
           from_task_id: savedTask.id,
-          to_task_id: taskForm.child_task_id,
-          arrow_type: taskForm.child_connection_type,
+          to_task_id: taskForm.conn_child_task_id,
+          arrow_type: taskForm.conn_child_connection_type,
           arrow_color: taskForm.color
         })
       } catch (e) {
@@ -555,13 +594,152 @@ const saveTask = async () => {
   }
 }
 
-const updateTask = async (task) => {
-  try {
-    await taskApi.update(task.id, task)
-    await loadTasks()
-  } catch (error) {
-    console.error('Failed to update task:', error)
+// Calculate parent date span from children
+const updateParentDatesFromChildren = (parentId) => {
+  const children = tasks.value.filter(t => t.parent_id === parentId)
+  if (children.length === 0) return null
+  
+  let minStart = new Date(children[0].start_date)
+  let maxEnd = new Date(children[0].end_date)
+  
+  children.forEach(child => {
+    const start = new Date(child.start_date)
+    const end = new Date(child.end_date)
+    if (start < minStart) minStart = start
+    if (end > maxEnd) maxEnd = end
+  })
+  
+  return {
+    start_date: minStart.toISOString(),
+    end_date: maxEnd.toISOString()
   }
+}
+
+// Live update - only update local state, no server sync
+const updateTaskLive = (updates) => {
+  const parentsToUpdate = new Set()
+  const movedParentIds = new Set()
+  
+  // First pass: identify which parents are being moved
+  updates.forEach(update => {
+    const task = tasks.value.find(t => t.id === update.id)
+    if (task && !task.parent_id) {
+      // This is a root-level task (potential parent)
+      const hasChildren = tasks.value.some(t => t.parent_id === task.id)
+      if (hasChildren && (update.start_date || update.end_date)) {
+        movedParentIds.add(task.id)
+      }
+    }
+  })
+  
+  // Calculate date deltas for moved parents to apply to children
+  const parentDateDeltas = new Map()
+  movedParentIds.forEach(parentId => {
+    const update = updates.find(u => u.id === parentId)
+    const parent = tasks.value.find(t => t.id === parentId)
+    if (update && parent && update.start_date) {
+      const oldStart = new Date(parent.start_date)
+      const newStart = new Date(update.start_date)
+      const deltaMs = newStart.getTime() - oldStart.getTime()
+      parentDateDeltas.set(parentId, deltaMs)
+    }
+  })
+  
+  // Apply updates
+  updates.forEach(update => {
+    const taskIndex = tasks.value.findIndex(t => t.id === update.id)
+    if (taskIndex !== -1) {
+      const task = tasks.value[taskIndex]
+      // Track parent for date update (only if parent is NOT being moved)
+      if (task.parent_id && !movedParentIds.has(task.parent_id)) {
+        parentsToUpdate.add(task.parent_id)
+      }
+      // Merge update into existing task
+      tasks.value[taskIndex] = { ...tasks.value[taskIndex], ...update }
+    }
+  })
+  
+  // Move children of moved parents
+  parentDateDeltas.forEach((deltaMs, parentId) => {
+    tasks.value.forEach((task, index) => {
+      if (task.parent_id === parentId) {
+        const oldStart = new Date(task.start_date)
+        const oldEnd = new Date(task.end_date)
+        tasks.value[index] = {
+          ...task,
+          start_date: new Date(oldStart.getTime() + deltaMs).toISOString(),
+          end_date: new Date(oldEnd.getTime() + deltaMs).toISOString()
+        }
+      }
+    })
+  })
+  
+  // Update parent dates to span children (only for parents that weren't explicitly moved)
+  parentsToUpdate.forEach(parentId => {
+    const parentIndex = tasks.value.findIndex(t => t.id === parentId)
+    if (parentIndex !== -1) {
+      const newDates = updateParentDatesFromChildren(parentId)
+      if (newDates) {
+        tasks.value[parentIndex] = { ...tasks.value[parentIndex], ...newDates }
+      }
+    }
+  })
+}
+
+// Debounce helper for batching server updates
+const pendingUpdates = new Map()
+let updateDebounceTimer = null
+
+const updateTask = async (task) => {
+  // Add to pending updates
+  pendingUpdates.set(task.id, { ...pendingUpdates.get(task.id), ...task })
+  
+  const currentTask = tasks.value.find(t => t.id === task.id)
+  
+  // If this is a parent task being moved, also add children to pending updates
+  const hasChildren = tasks.value.some(t => t.parent_id === task.id)
+  if (hasChildren && !currentTask?.parent_id) {
+    // This is a parent - children already updated in live update, just add them to pending
+    tasks.value.filter(t => t.parent_id === task.id).forEach(child => {
+      pendingUpdates.set(child.id, {
+        ...pendingUpdates.get(child.id),
+        id: child.id,
+        start_date: child.start_date,
+        end_date: child.end_date
+      })
+    })
+  }
+  
+  // Check if this task has a parent and update parent's dates
+  if (currentTask?.parent_id) {
+    const newDates = updateParentDatesFromChildren(currentTask.parent_id)
+    if (newDates) {
+      pendingUpdates.set(currentTask.parent_id, { 
+        ...pendingUpdates.get(currentTask.parent_id), 
+        id: currentTask.parent_id,
+        ...newDates 
+      })
+    }
+  }
+  
+  // Debounce server sync
+  if (updateDebounceTimer) {
+    clearTimeout(updateDebounceTimer)
+  }
+  
+  updateDebounceTimer = setTimeout(async () => {
+    const updates = Array.from(pendingUpdates.values())
+    pendingUpdates.clear()
+    
+    try {
+      // Send all updates in parallel
+      await Promise.all(updates.map(u => taskApi.update(u.id, u)))
+    } catch (error) {
+      console.error('Failed to update tasks:', error)
+      // Reload on error to get consistent state
+      await loadTasks()
+    }
+  }, 100)
 }
 
 const deleteTask = async (taskId) => {
@@ -582,12 +760,13 @@ const editTask = (task) => {
   taskForm.progress = task.progress
   taskForm.color = task.color
   taskForm.row_index = task.row_index
+  taskForm.parent_id = task.parent_id || null
   
-  // Reset connection fields (existing connections shown in list, these are for adding new)
-  taskForm.parent_task_id = null
-  taskForm.parent_connection_type = 'finish-to-start'
-  taskForm.child_task_id = null
-  taskForm.child_connection_type = 'finish-to-start'
+  // Reset connection (arrow) fields (existing connections shown in list, these are for adding new)
+  taskForm.conn_parent_task_id = null
+  taskForm.conn_parent_connection_type = 'finish-to-start'
+  taskForm.conn_child_task_id = null
+  taskForm.conn_child_connection_type = 'finish-to-start'
   
   // Expand connections sections if there are existing connections
   parentConnectionsExpanded.value = true
@@ -646,6 +825,12 @@ const closeConnectionModal = () => {
 onMounted(() => {
   resetTaskForm()
   loadTasks()
+})
+
+onUnmounted(() => {
+  if (updateDebounceTimer) {
+    clearTimeout(updateDebounceTimer)
+  }
 })
 </script>
 
@@ -791,6 +976,14 @@ onMounted(() => {
 
 .form-group input[type="range"] {
   accent-color: var(--accent-primary);
+}
+
+.form-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  font-style: italic;
 }
 
 .form-row {

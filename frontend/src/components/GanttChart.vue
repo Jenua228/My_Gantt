@@ -3,39 +3,68 @@
     <!-- Task Sidebar -->
     <div class="gantt-sidebar">
       <div class="sidebar-header">
-        <span>Tasks</span>
+        <span>Задачи</span>
         <span class="task-count">{{ tasks.length }}</span>
       </div>
       <div class="sidebar-content">
-        <div 
-          v-for="task in sortedTasks" 
-          :key="task.id" 
-          class="sidebar-task"
-          :class="{ 'is-selected': selectedTaskIds.has(task.id) }"
-          :style="{ borderLeftColor: task.color }"
-          @click="handleSidebarTaskClick($event, task)"
-        >
-          <div class="task-info">
-            <span class="task-title">{{ task.title }}</span>
-            <span class="task-dates">
-              {{ formatDate(task.start_date) }} — {{ formatDate(task.end_date) }}
-            </span>
-          </div>
-          <div class="task-actions">
-            <button class="action-btn" @click.stop="$emit('edit-task', task)" title="Edit">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+        <template v-for="task in visibleTasks" :key="task.id">
+          <div 
+            class="sidebar-task"
+            :class="{ 
+              'is-selected': selectedTaskIds.has(task.id),
+              'is-parent': hasChildren(task.id),
+              'is-child': task.parent_id != null,
+              'is-expanded': expandedTaskIds.has(task.id)
+            }"
+            :style="{ 
+              borderLeftColor: task.color,
+              paddingLeft: task.parent_id ? '36px' : '20px'
+            }"
+            @click="handleSidebarTaskClick($event, task)"
+          >
+            <!-- Expand/Collapse button for parents -->
+            <button 
+              v-if="hasChildren(task.id)" 
+              class="expand-btn"
+              @click.stop="toggleExpand(task.id)"
+            >
+              <svg 
+                width="12" height="12" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2"
+                :class="{ 'rotated': expandedTaskIds.has(task.id) }"
+              >
+                <polyline points="9 18 15 12 9 6" />
               </svg>
             </button>
-            <button class="action-btn danger" @click.stop="$emit('delete-task', task.id)" title="Delete">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
-            </button>
+            
+            <div class="task-info">
+              <span class="task-title">
+                <span v-if="hasChildren(task.id)" class="parent-badge">Parent</span>
+                {{ task.title }}
+              </span>
+              <span class="task-dates">
+                {{ formatDate(task.start_date) }} — {{ formatDate(task.end_date) }}
+              </span>
+            </div>
+            <div class="task-actions">
+              <button class="action-btn" @click.stop="$emit('edit-task', task)" title="Редактировать">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+              <button class="action-btn danger" @click.stop="$emit('delete-task', task.id)" title="Удалить">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
+            </div>
           </div>
-        </div>
+        </template>
         <div v-if="tasks.length === 0" class="sidebar-empty">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
@@ -69,6 +98,21 @@
       <div class="timeline-body" :style="{ width: timelineWidth + 'px', minHeight: gridHeight + 'px' }">
         <!-- Grid background -->
         <div class="grid-background" :style="{ width: timelineWidth + 'px', height: gridHeight + 'px' }"></div>
+        
+        <!-- Parent-Children Group Backgrounds -->
+        <div 
+          v-for="group in childGroupBackgrounds" 
+          :key="'group-' + group.parentId"
+          class="child-group-background"
+          :style="{
+            top: group.top + 'px',
+            height: group.height + 'px',
+            width: timelineWidth + 'px',
+            borderLeftColor: group.color
+          }"
+        >
+          <div class="group-indicator" :style="{ backgroundColor: group.color }"></div>
+        </div>
         
         <!-- Grid Lines -->
         <svg class="grid-lines" :width="timelineWidth" :height="gridHeight">
@@ -108,7 +152,7 @@
           <defs>
             <!-- Arrow markers for each connection -->
             <marker 
-              v-for="conn in connections"
+              v-for="conn in visibleConnections"
               :key="'marker-' + conn.id"
               :id="'arrowhead-' + conn.id"
               markerWidth="10"
@@ -122,7 +166,7 @@
             </marker>
             <!-- Start circle markers -->
             <marker 
-              v-for="conn in connections"
+              v-for="conn in visibleConnections"
               :key="'start-marker-' + conn.id"
               :id="'startpoint-' + conn.id"
               markerWidth="6"
@@ -136,10 +180,13 @@
           </defs>
           
           <g 
-            v-for="conn in connections" 
+            v-for="conn in visibleConnections" 
             :key="conn.id" 
             class="connection-group"
-            :class="{ 'is-hovered': hoveredConnectionId === conn.id }"
+            :class="{ 
+              'is-hovered': hoveredConnectionId === conn.id,
+              'is-inherited': conn.isInherited 
+            }"
             @mouseenter="hoveredConnectionId = conn.id"
             @mouseleave="hoveredConnectionId = null"
           >
@@ -179,53 +226,88 @@
         </svg>
         
         <!-- Task Bars -->
-        <div 
-          v-for="task in sortedTasks" 
-          :key="task.id"
-          :ref="el => taskRefs[task.id] = el"
-          class="task-bar"
-          :class="{ 
-            'is-dragging': isDragging && selectedTaskIds.has(task.id),
-            'is-connecting': connectingFrom?.id === task.id,
-            'is-selected': selectedTaskIds.has(task.id)
-          }"
-          :style="getTaskStyle(task)"
-          :title="getTaskTooltip(task)"
-          @mousedown="handleTaskMouseDown($event, task)"
-        >
-          <div class="task-progress" :style="{ width: task.progress + '%', backgroundColor: task.color }"></div>
-          <div class="task-content" :ref="el => taskContentRefs[task.id] = el">
-            <span class="task-bar-title" :ref="el => taskTitleRefs[task.id] = el">{{ task.title }}</span>
-            <span class="task-bar-progress">{{ task.progress }}%</span>
+        <template v-for="task in displayTasks" :key="task.id">
+          <!-- Parent Task Bar (thin line when expanded) -->
+          <div 
+            v-if="task.isParent && task.isExpanded"
+            :ref="el => taskRefs[task.id] = el"
+            class="task-bar task-bar-parent"
+            :class="{ 
+              'is-dragging': isDragging && selectedTaskIds.has(task.id),
+              'is-selected': selectedTaskIds.has(task.id)
+            }"
+            :style="getParentTaskStyle(task)"
+            :title="getTaskTooltip(task)"
+            @mousedown="handleTaskMouseDown($event, task)"
+            @dblclick.stop="$emit('edit-task', task)"
+          >
+            <div class="parent-task-line" :style="{ backgroundColor: task.color }">
+              <span class="parent-task-title">{{ task.title }}</span>
+            </div>
           </div>
           
-          <!-- Floating label for tasks with overflow text -->
-          <div class="task-floating-label">
-            {{ task.title }}
+          <!-- Regular Task Bar (or collapsed parent) -->
+          <div 
+            v-else
+            :ref="el => taskRefs[task.id] = el"
+            class="task-bar"
+            :class="{ 
+              'is-dragging': isDragging && selectedTaskIds.has(task.id),
+              'is-connecting': connectingFrom?.id === task.id,
+              'is-selected': selectedTaskIds.has(task.id),
+              'is-parent-collapsed': task.isParent && !task.isExpanded,
+              'is-child-task': task.parent_id != null
+            }"
+            :style="getTaskStyle(task)"
+            :title="getTaskTooltip(task)"
+            @mousedown="handleTaskMouseDown($event, task)"
+            @dblclick.stop="$emit('edit-task', task)"
+          >
+            <div class="task-progress" :style="{ width: task.progress + '%', backgroundColor: task.color }"></div>
+            <div class="task-content" :ref="el => taskContentRefs[task.id] = el">
+              <span class="task-bar-title" :ref="el => taskTitleRefs[task.id] = el">
+                <button 
+                  v-if="task.isParent" 
+                  class="expand-toggle-btn"
+                  @click.stop="toggleExpand(task.id)"
+                  @mousedown.stop
+                  :title="task.isExpanded ? 'Свернуть' : 'Развернуть'"
+                >
+                  {{ task.isExpanded ? '▼' : '▶' }}
+                </button>
+                {{ task.title }}
+              </span>
+              <span class="task-bar-progress">{{ task.progress }}%</span>
+            </div>
+            
+            <!-- Floating label for tasks with overflow text -->
+            <div class="task-floating-label">
+              {{ task.title }}
+            </div>
+            
+            <!-- Connection handles -->
+            <div 
+              class="connection-handle handle-left" 
+              @mousedown.stop="startConnection($event, task, 'start')"
+              title="Соединить от начала"
+            ></div>
+            <div 
+              class="connection-handle handle-right"
+              @mousedown.stop="startConnection($event, task, 'end')"
+              title="Соединить от конца"
+            ></div>
+            
+            <!-- Resize handles -->
+            <div 
+              class="resize-handle resize-left"
+              @mousedown.stop="startResize($event, task, 'left')"
+            ></div>
+            <div 
+              class="resize-handle resize-right"
+              @mousedown.stop="startResize($event, task, 'right')"
+            ></div>
           </div>
-          
-          <!-- Connection handles -->
-          <div 
-            class="connection-handle handle-left" 
-            @mousedown.stop="startConnection($event, task, 'start')"
-            title="Connect from start"
-          ></div>
-          <div 
-            class="connection-handle handle-right"
-            @mousedown.stop="startConnection($event, task, 'end')"
-            title="Connect from end"
-          ></div>
-          
-          <!-- Resize handles -->
-          <div 
-            class="resize-handle resize-left"
-            @mousedown.stop="startResize($event, task, 'left')"
-          ></div>
-          <div 
-            class="resize-handle resize-right"
-            @mousedown.stop="startResize($event, task, 'right')"
-          ></div>
-        </div>
+        </template>
       </div>
     </div>
     
@@ -233,33 +315,33 @@
     <Transition name="popup">
       <div v-if="connectionInfo" class="connection-popup" :style="connectionPopupStyle">
         <div class="popup-header">
-          <span>Connection Info</span>
+          <span>Информация о связи</span>
           <button class="popup-close" @click="connectionInfo = null">×</button>
         </div>
         <div class="popup-content">
           <div class="popup-row">
-            <span class="popup-label">From:</span>
+            <span class="popup-label">Откуда:</span>
             <span class="popup-value" :style="{ color: getTaskById(connectionInfo.from_task_id)?.color }">
-              {{ getTaskById(connectionInfo.from_task_id)?.title || 'Unknown' }}
+              {{ getTaskById(connectionInfo.from_task_id)?.title || 'Неизвестно' }}
             </span>
           </div>
           <div class="popup-row">
-            <span class="popup-label">To:</span>
+            <span class="popup-label">Куда:</span>
             <span class="popup-value" :style="{ color: getTaskById(connectionInfo.to_task_id)?.color }">
-              {{ getTaskById(connectionInfo.to_task_id)?.title || 'Unknown' }}
+              {{ getTaskById(connectionInfo.to_task_id)?.title || 'Неизвестно' }}
             </span>
           </div>
           <div class="popup-row">
-            <span class="popup-label">Type:</span>
+            <span class="popup-label">Тип:</span>
             <span class="popup-value">{{ formatConnectionType(connectionInfo.arrow_type) }}</span>
           </div>
         </div>
         <div class="popup-footer">
           <button class="btn btn-secondary btn-sm" @click="$emit('edit-connection', connectionInfo); connectionInfo = null">
-            Edit
+            Изменить
           </button>
           <button class="btn btn-danger btn-sm" @click="$emit('delete-connection', connectionInfo.id); connectionInfo = null">
-            Delete
+            Удалить
           </button>
         </div>
       </div>
@@ -267,14 +349,14 @@
     
     <!-- Selection count indicator -->
     <div v-if="selectedTaskIds.size > 1" class="selection-indicator">
-      {{ selectedTaskIds.size }} tasks selected (Shift+Click to add/remove)
+      Выбрано задач: {{ selectedTaskIds.size }} (Shift+Клик для добавления)
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { format, addDays, addHours, addWeeks, addMonths, startOfDay, differenceInDays, differenceInHours, isToday as checkIsToday, parseISO } from 'date-fns'
+import { format, addDays, addWeeks, addMonths, startOfDay, differenceInDays, isToday as checkIsToday, parseISO } from 'date-fns'
 
 const props = defineProps({
   tasks: { type: Array, default: () => [] },
@@ -282,7 +364,7 @@ const props = defineProps({
   scale: { type: String, default: 'day' }
 })
 
-const emit = defineEmits(['update-task', 'delete-task', 'create-connection', 'delete-connection', 'edit-task', 'edit-connection'])
+const emit = defineEmits(['update-task', 'update-task-live', 'delete-task', 'create-connection', 'delete-connection', 'edit-task', 'edit-connection'])
 
 const containerRef = ref(null)
 const timelineRef = ref(null)
@@ -307,10 +389,13 @@ const connectionInfo = ref(null)
 const connectionPopupPosition = ref({ x: 0, y: 0 })
 const hoveredConnectionId = ref(null)
 
+// Hierarchy expansion state
+const expandedTaskIds = ref(new Set())
+
 const rowHeight = 48
+const parentRowHeight = 16 // Thin line for expanded parents
 const cellWidth = computed(() => {
   switch (props.scale) {
-    case 'hour': return 30
     case 'day': return 40
     case 'week': return 100
     case 'month': return 120
@@ -348,6 +433,219 @@ const sortedTasks = computed(() => {
   return [...props.tasks].sort((a, b) => a.row_index - b.row_index)
 })
 
+// Map for O(1) task lookup - used in connection rendering
+const tasksMap = computed(() => {
+  const map = new Map()
+  props.tasks.forEach(t => map.set(t.id, t))
+  return map
+})
+
+// Children map for hierarchy
+const childrenMap = computed(() => {
+  const map = new Map()
+  props.tasks.forEach(t => {
+    if (t.parent_id) {
+      if (!map.has(t.parent_id)) {
+        map.set(t.parent_id, [])
+      }
+      map.get(t.parent_id).push(t)
+    }
+  })
+  // Sort children by row_index
+  map.forEach((children, parentId) => {
+    children.sort((a, b) => a.row_index - b.row_index)
+  })
+  return map
+})
+
+// Check if task has children
+const hasChildren = (taskId) => {
+  return childrenMap.value.has(taskId) && childrenMap.value.get(taskId).length > 0
+}
+
+// Get children of a task
+const getChildren = (taskId) => {
+  return childrenMap.value.get(taskId) || []
+}
+
+// Toggle expand/collapse
+const toggleExpand = (taskId) => {
+  if (expandedTaskIds.value.has(taskId)) {
+    expandedTaskIds.value.delete(taskId)
+  } else {
+    expandedTaskIds.value.add(taskId)
+  }
+}
+
+// Visible tasks in sidebar (hierarchical order)
+const visibleTasks = computed(() => {
+  const result = []
+  
+  // Get root tasks (no parent)
+  const rootTasks = props.tasks
+    .filter(t => !t.parent_id)
+    .sort((a, b) => a.row_index - b.row_index)
+  
+  // Add tasks recursively respecting expansion state
+  const addTasksRecursively = (tasks, depth = 0) => {
+    tasks.forEach(task => {
+      result.push(task)
+      if (hasChildren(task.id) && expandedTaskIds.value.has(task.id)) {
+        addTasksRecursively(getChildren(task.id), depth + 1)
+      }
+    })
+  }
+  
+  addTasksRecursively(rootTasks)
+  return result
+})
+
+// Tasks visible on the Gantt chart (same as sidebar but with row positions)
+const displayTasks = computed(() => {
+  const result = []
+  let currentRow = 0
+  
+  const addTasksRecursively = (tasks, parentExpanded = true) => {
+    tasks.forEach(task => {
+      const isParent = hasChildren(task.id)
+      const isExpanded = expandedTaskIds.value.has(task.id)
+      
+      // Calculate display row
+      const displayTask = {
+        ...task,
+        displayRow: currentRow,
+        isParent,
+        isExpanded,
+        isChildVisible: parentExpanded
+      }
+      
+      result.push(displayTask)
+      currentRow++
+      
+      // Add children if expanded
+      if (isParent && isExpanded) {
+        addTasksRecursively(getChildren(task.id), true)
+      }
+    })
+  }
+  
+  // Get root tasks (no parent)
+  const rootTasks = props.tasks
+    .filter(t => !t.parent_id)
+    .sort((a, b) => a.row_index - b.row_index)
+  
+  addTasksRecursively(rootTasks)
+  return result
+})
+
+// Map task ID to display row for connections
+const taskDisplayRowMap = computed(() => {
+  const map = new Map()
+  displayTasks.value.forEach(t => map.set(t.id, t.displayRow))
+  return map
+})
+
+// Helper to get display row for a task
+const getTaskDisplayRow = (taskId) => {
+  return taskDisplayRowMap.value.get(taskId) ?? -1
+}
+
+// Set of visible task IDs
+const visibleTaskIds = computed(() => {
+  return new Set(displayTasks.value.map(t => t.id))
+})
+
+// Calculate backgrounds for child groups (to visually distinguish children from other tasks)
+const childGroupBackgrounds = computed(() => {
+  const groups = []
+  
+  displayTasks.value.forEach(task => {
+    if (task.isParent && task.isExpanded) {
+      const children = getChildren(task.id)
+      if (children.length === 0) return
+      
+      // Find the display rows of the children
+      const childRows = children
+        .map(child => getTaskDisplayRow(child.id))
+        .filter(row => row !== -1)
+      
+      if (childRows.length === 0) return
+      
+      const minRow = Math.min(...childRows)
+      const maxRow = Math.max(...childRows)
+      
+      groups.push({
+        parentId: task.id,
+        top: minRow * rowHeight,
+        height: (maxRow - minRow + 1) * rowHeight,
+        color: task.color
+      })
+    }
+  })
+  
+  return groups
+})
+
+// Find the ancestor parent that is visible for a hidden task
+const getVisibleAncestor = (taskId) => {
+  const task = tasksMap.value.get(taskId)
+  if (!task) return null
+  
+  // If task is visible, return itself
+  if (visibleTaskIds.value.has(taskId)) {
+    return taskId
+  }
+  
+  // If task has a parent, check if parent is visible
+  if (task.parent_id) {
+    return getVisibleAncestor(task.parent_id)
+  }
+  
+  return null
+}
+
+// Connections with hidden tasks redirected to their visible parent
+const visibleConnections = computed(() => {
+  const result = []
+  const seenConnections = new Set()
+  
+  props.connections.forEach(conn => {
+    const fromTaskId = conn.from_task_id
+    const toTaskId = conn.to_task_id
+    
+    // Get visible task IDs (redirect to parent if hidden)
+    const visibleFromId = getVisibleAncestor(fromTaskId)
+    const visibleToId = getVisibleAncestor(toTaskId)
+    
+    // Skip if either task has no visible ancestor
+    if (!visibleFromId || !visibleToId) return
+    
+    // Skip self-connections (when both map to same parent)
+    if (visibleFromId === visibleToId) return
+    
+    // Create unique key to avoid duplicate connections
+    const key = `${visibleFromId}-${visibleToId}-${conn.arrow_type}`
+    if (seenConnections.has(key)) return
+    seenConnections.add(key)
+    
+    // If connection is unchanged, use original
+    if (visibleFromId === fromTaskId && visibleToId === toTaskId) {
+      result.push(conn)
+    } else {
+      // Create modified connection pointing to visible ancestors
+      result.push({
+        ...conn,
+        id: `inherited-${conn.id}`,
+        from_task_id: visibleFromId,
+        to_task_id: visibleToId,
+        isInherited: true
+      })
+    }
+  })
+  
+  return result
+})
+
 const timeUnits = computed(() => {
   const units = []
   let current = new Date(dateRange.value.start)
@@ -357,12 +655,6 @@ const timeUnits = computed(() => {
     let label, sublabel, isStrong = false
     
     switch (props.scale) {
-      case 'hour':
-        label = format(current, 'HH:mm')
-        sublabel = format(current, 'MMM d')
-        isStrong = current.getHours() === 0
-        current = addHours(current, 1)
-        break
       case 'day':
         label = format(current, 'd')
         sublabel = format(current, 'EEE')
@@ -392,7 +684,7 @@ const timeUnits = computed(() => {
 const timelineWidth = computed(() => timeUnits.value.length * cellWidth.value)
 
 const gridHeight = computed(() => {
-  const tasksHeight = sortedTasks.value.length * rowHeight
+  const tasksHeight = displayTasks.value.length * rowHeight
   return Math.max(tasksHeight + rowHeight * 5, containerHeight.value - 60)
 })
 
@@ -415,8 +707,6 @@ const getDateOffset = (date) => {
   const d = typeof date === 'string' ? parseISO(date) : date
   
   switch (props.scale) {
-    case 'hour':
-      return differenceInHours(d, dateRange.value.start) * cellWidth.value
     case 'day':
       return differenceInDays(d, dateRange.value.start) * cellWidth.value
     case 'week':
@@ -432,7 +722,44 @@ const getTaskStyle = (task) => {
   const left = getDateOffset(task.start_date)
   const right = getDateOffset(task.end_date)
   const width = Math.max(right - left, 20)
-  const top = task.row_index * rowHeight + 8
+  // Use displayRow if available (from displayTasks), otherwise fall back to row_index
+  const row = task.displayRow !== undefined ? task.displayRow : task.row_index
+  const top = row * rowHeight + 8
+  
+  return {
+    left: `${left}px`,
+    width: `${width}px`,
+    top: `${top}px`,
+    '--task-color': task.color
+  }
+}
+
+// Style for expanded parent task (thin line spanning children)
+const getParentTaskStyle = (task) => {
+  // Get all children of this task
+  const children = getChildren(task.id)
+  if (children.length === 0) {
+    return getTaskStyle(task)
+  }
+  
+  // Calculate the span to cover all children
+  let minStart = new Date(task.start_date)
+  let maxEnd = new Date(task.end_date)
+  
+  children.forEach(child => {
+    const childStart = new Date(child.start_date)
+    const childEnd = new Date(child.end_date)
+    if (childStart < minStart) minStart = childStart
+    if (childEnd > maxEnd) maxEnd = childEnd
+  })
+  
+  const left = getDateOffset(minStart)
+  const right = getDateOffset(maxEnd)
+  const width = Math.max(right - left, 40)
+  
+  // Position at the top of the parent's row
+  const row = task.displayRow !== undefined ? task.displayRow : task.row_index
+  const top = row * rowHeight + 4
   
   return {
     left: `${left}px`,
@@ -460,15 +787,15 @@ const isToday = (date) => {
 }
 
 const getTaskById = (id) => {
-  return props.tasks.find(t => t.id === id)
+  return tasksMap.value.get(id)
 }
 
 const formatConnectionType = (type) => {
   const types = {
-    'finish-to-start': 'Finish → Start',
-    'start-to-start': 'Start → Start',
-    'finish-to-finish': 'Finish → Finish',
-    'start-to-finish': 'Start → Finish'
+    'finish-to-start': 'Окончание → Начало',
+    'start-to-start': 'Начало → Начало',
+    'finish-to-finish': 'Окончание → Окончание',
+    'start-to-finish': 'Начало → Окончание'
   }
   return types[type] || type
 }
@@ -491,18 +818,24 @@ const getStrokeDashArray = (style) => {
 
 // Improved connection path - arrows to right side come from right, not under task
 const getConnectionPath = (conn) => {
-  const fromTask = props.tasks.find(t => t.id === conn.from_task_id)
-  const toTask = props.tasks.find(t => t.id === conn.to_task_id)
+  const fromTask = tasksMap.value.get(conn.from_task_id)
+  const toTask = tasksMap.value.get(conn.to_task_id)
   
   if (!fromTask || !toTask) return ''
+  
+  // Check if both tasks are visible
+  const fromRow = getTaskDisplayRow(conn.from_task_id)
+  const toRow = getTaskDisplayRow(conn.to_task_id)
+  
+  if (fromRow === -1 || toRow === -1) return '' // Task not visible
   
   const fromLeft = getDateOffset(fromTask.start_date)
   const fromRight = getDateOffset(fromTask.end_date)
   const toLeft = getDateOffset(toTask.start_date)
   const toRight = getDateOffset(toTask.end_date)
   
-  const fromY = fromTask.row_index * rowHeight + rowHeight / 2
-  const toY = toTask.row_index * rowHeight + rowHeight / 2
+  const fromY = fromRow * rowHeight + rowHeight / 2
+  const toY = toRow * rowHeight + rowHeight / 2
   
   let startX, startSide, endX, endSide
   
@@ -629,15 +962,16 @@ const handleTaskMouseDown = (event, task) => {
   if (event.button !== 0) return
   
   if (event.shiftKey) {
-    // Toggle selection
-    if (selectedTaskIds.value.has(task.id)) {
-      selectedTaskIds.value.delete(task.id)
-    } else {
-      selectedTaskIds.value.add(task.id)
-    }
+    // Shift+click: add to selection
+    selectedTaskIds.value.add(task.id)
   } else {
-    // If clicking on unselected task, select only it
-    if (!selectedTaskIds.value.has(task.id)) {
+    // Regular click: toggle if already selected, otherwise select only this
+    if (selectedTaskIds.value.has(task.id) && selectedTaskIds.value.size === 1) {
+      // If this is the only selected task and we click it again - deselect
+      selectedTaskIds.value.delete(task.id)
+      return // Don't start drag
+    } else if (!selectedTaskIds.value.has(task.id)) {
+      // Clicking on unselected task - select only it
       selectedTaskIds.value.clear()
       selectedTaskIds.value.add(task.id)
     }
@@ -662,7 +996,7 @@ const startDrag = (event, task) => {
   // Store initial positions of all selected tasks
   dragStartPositions.value = {}
   selectedTaskIds.value.forEach(id => {
-    const t = props.tasks.find(tt => tt.id === id)
+    const t = tasksMap.value.get(id)
     if (t) {
       dragStartPositions.value[id] = {
         start_date: new Date(t.start_date),
@@ -696,10 +1030,14 @@ const handleDrag = (event) => {
   const newRowIndex = Math.max(0, Math.round(newY / rowHeight))
   const deltaRow = newRowIndex - originalRowIndex
   
-  // Update all selected tasks
+  // Update all selected tasks (live update - local only, no server sync)
+  const updates = []
   selectedTaskIds.value.forEach(id => {
     const taskOriginal = dragStartPositions.value[id]
     if (!taskOriginal) return
+    
+    const task = tasksMap.value.get(id)
+    const isChildTask = task && task.parent_id != null
     
     const duration = differenceInDays(taskOriginal.end_date, taskOriginal.start_date)
     
@@ -708,9 +1046,6 @@ const handleDrag = (event) => {
     const targetX = originalTaskX + deltaX
     
     switch (props.scale) {
-      case 'hour':
-        newStartDate = addHours(dateRange.value.start, Math.round(targetX / cellWidth.value))
-        break
       case 'week':
         newStartDate = addDays(dateRange.value.start, Math.round(targetX / cellWidth.value * 7))
         break
@@ -722,18 +1057,39 @@ const handleDrag = (event) => {
     }
     
     const newEndDate = addDays(newStartDate, duration)
-    const taskNewRowIndex = Math.max(0, taskOriginal.row_index + deltaRow)
+    // Child tasks don't change row_index (they're positioned relative to parent)
+    const taskNewRowIndex = isChildTask ? taskOriginal.row_index : Math.max(0, taskOriginal.row_index + deltaRow)
     
-    emit('update-task', {
+    updates.push({
       id: id,
       start_date: newStartDate.toISOString(),
       end_date: newEndDate.toISOString(),
       row_index: taskNewRowIndex
     })
   })
+  
+  // Emit all updates at once for batch processing
+  if (updates.length > 0) {
+    emit('update-task-live', updates)
+  }
 }
 
 const stopDrag = () => {
+  // Emit final updates to save to server
+  if (draggingTask.value && Object.keys(dragStartPositions.value).length > 0) {
+    selectedTaskIds.value.forEach(id => {
+      const task = tasksMap.value.get(id)
+      if (task) {
+        emit('update-task', {
+          id: id,
+          start_date: task.start_date,
+          end_date: task.end_date,
+          row_index: task.row_index
+        })
+      }
+    })
+  }
+  
   draggingTask.value = null
   isDragging.value = false
   dragStartPositions.value = {}
@@ -763,9 +1119,6 @@ const handleResize = (event) => {
   
   let newDate
   switch (props.scale) {
-    case 'hour':
-      newDate = addHours(dateRange.value.start, Math.round(x / cellWidth.value))
-      break
     case 'week':
       newDate = addDays(dateRange.value.start, Math.round(x / cellWidth.value * 7))
       break
@@ -778,22 +1131,36 @@ const handleResize = (event) => {
   
   if (resizeDirection.value === 'left') {
     if (newDate < new Date(resizingTask.value.end_date)) {
-      emit('update-task', {
+      // Live update during resize (local only)
+      emit('update-task-live', [{
         id: resizingTask.value.id,
         start_date: newDate.toISOString()
-      })
+      }])
     }
   } else {
     if (newDate > new Date(resizingTask.value.start_date)) {
-      emit('update-task', {
+      // Live update during resize (local only)
+      emit('update-task-live', [{
         id: resizingTask.value.id,
         end_date: newDate.toISOString()
-      })
+      }])
     }
   }
 }
 
 const stopResize = () => {
+  // Emit final update to save to server
+  if (resizingTask.value) {
+    const task = tasksMap.value.get(resizingTask.value.id)
+    if (task) {
+      emit('update-task', {
+        id: task.id,
+        start_date: task.start_date,
+        end_date: task.end_date
+      })
+    }
+  }
+  
   resizingTask.value = null
   resizeDirection.value = null
   document.removeEventListener('mousemove', handleResize)
@@ -949,6 +1316,84 @@ onUnmounted(() => {
   border-left-color: var(--accent-primary) !important;
 }
 
+/* Hierarchy styles for sidebar */
+.sidebar-task.is-parent {
+  background: var(--bg-tertiary);
+}
+
+.sidebar-task.is-child {
+  background: rgba(255, 255, 255, 0.02);
+  position: relative;
+}
+
+/* Visual connector line for child tasks in sidebar */
+.sidebar-task.is-child::before {
+  content: '';
+  position: absolute;
+  left: 24px;
+  top: 0;
+  bottom: 50%;
+  width: 2px;
+  background: var(--border-subtle);
+}
+
+.sidebar-task.is-child::after {
+  content: '';
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  width: 8px;
+  height: 2px;
+  background: var(--border-subtle);
+}
+
+.sidebar-task.is-expanded {
+  border-bottom: none;
+}
+
+.expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  margin-right: 8px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.expand-btn:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.expand-btn svg {
+  transition: transform 0.2s ease;
+}
+
+.expand-btn svg.rotated {
+  transform: rotate(90deg);
+}
+
+.parent-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-right: 6px;
+  letter-spacing: 0.5px;
+}
+
 .task-info {
   display: flex;
   flex-direction: column;
@@ -1081,6 +1526,31 @@ onUnmounted(() => {
   background: var(--bg-primary);
 }
 
+/* Child group visual indicator */
+.child-group-background {
+  position: absolute;
+  left: 0;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 4px solid transparent;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.group-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  opacity: 0.6;
+}
+
+/* Inherited connection style (dashed) */
+.connection-group.is-inherited .connection-path {
+  stroke-dasharray: 6, 3;
+  opacity: 0.7;
+}
+
 /* Grid */
 .grid-lines {
   position: absolute;
@@ -1158,6 +1628,90 @@ onUnmounted(() => {
 
 .task-bar.is-connecting {
   box-shadow: 0 0 0 2px var(--accent-primary), var(--shadow-glow);
+}
+
+/* Parent task bar (thin line style when expanded) */
+.task-bar-parent {
+  position: absolute;
+  height: 12px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  overflow: visible;
+  user-select: none;
+  z-index: 4;
+}
+
+.task-bar-parent:hover {
+  z-index: 6;
+}
+
+.parent-task-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 6px;
+  transform: translateY(-50%);
+  border-radius: 3px;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+}
+
+.parent-task-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--bg-primary);
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Collapsed parent indicator */
+.task-bar.is-parent-collapsed {
+  border: 2px solid var(--task-color);
+}
+
+.parent-indicator {
+  font-size: 8px;
+  margin-right: 4px;
+  opacity: 0.7;
+}
+
+.expand-toggle-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 10px;
+  padding: 0 4px;
+  margin-right: 4px;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.expand-toggle-btn:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+/* Child task visual styling */
+.task-bar.is-child-task {
+  border-left: 3px solid var(--task-color);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.task-bar.is-child-task::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  width: 9px;
+  height: 2px;
+  background: var(--task-color);
+  opacity: 0.5;
 }
 
 .task-progress {
