@@ -1,11 +1,46 @@
 <template>
-  <div class="gantt-container" ref="containerRef" @click="handleContainerClick">
+  <div 
+    class="gantt-container" 
+    ref="containerRef" 
+    @click="handleContainerClick"
+  >
     <!-- Task Sidebar -->
-    <div class="gantt-sidebar">
+    <div 
+      class="gantt-sidebar" 
+      :style="{ width: sidebarSize + 'px' }"
+    >
       <div class="sidebar-header">
-        <span>Задачи</span>
-        <span class="task-count">{{ tasks.length }}</span>
+        <div class="sidebar-header-left">
+          <span>Задачи</span>
+          <span class="task-count">{{ tasks.length }}</span>
+        </div>
+        <div class="sidebar-header-controls">
+          <button 
+            class="sidebar-toggle-btn" 
+            @click="toggleSidebarExpanded"
+            :title="sidebarExpanded ? 'Свернуть столбцы' : 'Показать все столбцы'"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+            </svg>
+          </button>
+        </div>
       </div>
+      
+      <!-- Table Header -->
+      <div class="sidebar-table-header" v-if="sidebarExpanded">
+        <div class="table-col col-name">Название</div>
+        <div class="table-col col-dates">Даты</div>
+        <div class="table-col col-duration">Дней</div>
+        <div class="table-col col-progress">%</div>
+        <div class="table-col col-predecessors">Предшественники</div>
+        <div class="table-col col-successors">Последователи</div>
+        <div class="table-col col-actions"></div>
+      </div>
+      
       <div class="sidebar-content">
         <template v-for="task in visibleTasks" :key="task.id">
           <div 
@@ -14,7 +49,8 @@
               'is-selected': selectedTaskIds.has(task.id),
               'is-parent': hasChildren(task.id),
               'is-child': task.parent_id != null,
-              'is-expanded': expandedTaskIds.has(task.id)
+              'is-expanded': expandedTaskIds.has(task.id),
+              'sidebar-expanded': sidebarExpanded
             }"
             :style="{ 
               borderLeftColor: task.color,
@@ -40,29 +76,84 @@
               </svg>
             </button>
             
-            <div class="task-info">
-              <span class="task-title">
-                <span v-if="hasChildren(task.id)" class="parent-badge">Parent</span>
-                {{ task.title }}
-              </span>
-              <span class="task-dates">
-                {{ formatDate(task.start_date) }} — {{ formatDate(task.end_date) }}
-              </span>
-            </div>
-            <div class="task-actions">
-              <button class="action-btn" @click.stop="$emit('edit-task', task)" title="Редактировать">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-              </button>
-              <button class="action-btn danger" @click.stop="$emit('delete-task', task.id)" title="Удалить">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
-              </button>
-            </div>
+            <!-- Compact view (default) -->
+            <template v-if="!sidebarExpanded">
+              <div class="task-info">
+                <span class="task-title">
+                  <span v-if="hasChildren(task.id)" class="parent-badge">Родитель</span>
+                  {{ task.title }}
+                </span>
+                <span class="task-dates">
+                  {{ formatDate(task.start_date) }} — {{ formatDate(task.end_date) }}
+                </span>
+              </div>
+              <div class="task-actions">
+                <button class="action-btn" @click.stop="$emit('edit-task', task)" title="Редактировать">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
+                <button class="action-btn danger" @click.stop="$emit('delete-task', task.id)" title="Удалить">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                </button>
+              </div>
+            </template>
+            
+            <!-- Expanded table view -->
+            <template v-else>
+              <div class="table-col col-name">
+                <span class="task-title-text">
+                  <span v-if="hasChildren(task.id)" class="parent-badge">Р</span>
+                  {{ task.title }}
+                </span>
+              </div>
+              <div class="table-col col-dates">
+                {{ formatDateShort(task.start_date) }} — {{ formatDateShort(task.end_date) }}
+              </div>
+              <div class="table-col col-duration">
+                {{ getTaskDuration(task) }}
+              </div>
+              <div class="table-col col-progress">
+                <div class="mini-progress" :style="{ width: task.progress + '%', backgroundColor: task.color }"></div>
+                {{ task.progress }}
+              </div>
+              <div class="table-col col-predecessors">
+                <template v-if="getTaskPredecessors(task.id).length > 0">
+                  <div v-for="pred in getTaskPredecessors(task.id)" :key="pred.id" class="connection-detail">
+                    <span class="conn-task-name">{{ pred.taskName }}</span>
+                    <span class="conn-type">{{ pred.type }}</span>
+                  </div>
+                </template>
+                <span v-else class="no-connections">—</span>
+              </div>
+              <div class="table-col col-successors">
+                <template v-if="getTaskSuccessors(task.id).length > 0">
+                  <div v-for="succ in getTaskSuccessors(task.id)" :key="succ.id" class="connection-detail">
+                    <span class="conn-task-name">{{ succ.taskName }}</span>
+                    <span class="conn-type">{{ succ.type }}</span>
+                  </div>
+                </template>
+                <span v-else class="no-connections">—</span>
+              </div>
+              <div class="table-col col-actions">
+                <button class="action-btn" @click.stop="$emit('edit-task', task)" title="Редактировать">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
+                <button class="action-btn danger" @click.stop="$emit('delete-task', task.id)" title="Удалить">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                </button>
+              </div>
+            </template>
           </div>
         </template>
         <div v-if="tasks.length === 0" class="sidebar-empty">
@@ -72,14 +163,20 @@
             <line x1="8" y1="2" x2="8" y2="6" />
             <line x1="3" y1="10" x2="21" y2="10" />
           </svg>
-          <p>No tasks yet</p>
-          <span>Click "Add Task" or "Load Demo" to get started</span>
+          <p>Нет задач</p>
+          <span>Нажмите "Добавить задачу" или "Демо-данные"</span>
         </div>
       </div>
+      
+      <!-- Resize handle -->
+      <div 
+        class="sidebar-resize-handle"
+        @mousedown="startSidebarResize"
+      ></div>
     </div>
     
     <!-- Gantt Timeline -->
-    <div class="gantt-timeline" ref="timelineRef" @scroll="handleScroll">
+    <div class="gantt-timeline" ref="timelineRef" @scroll="handleScroll" @wheel="handleWheel">
       <!-- Timeline Header -->
       <div class="timeline-header" :style="{ width: timelineWidth + 'px' }">
         <div 
@@ -242,6 +339,12 @@
             @dblclick.stop="$emit('edit-task', task)"
           >
             <div class="parent-task-line" :style="{ backgroundColor: task.color }">
+              <button 
+                class="expand-toggle-btn parent-collapse-btn"
+                @click.stop="toggleExpand(task.id)"
+                @mousedown.stop
+                title="Свернуть"
+              >▼</button>
               <span class="parent-task-title">{{ task.title }}</span>
             </div>
           </div>
@@ -351,6 +454,16 @@
     <div v-if="selectedTaskIds.size > 1" class="selection-indicator">
       Выбрано задач: {{ selectedTaskIds.size }} (Shift+Клик для добавления)
     </div>
+    
+    <!-- Zoom indicator -->
+    <div class="zoom-indicator" v-if="zoomLevel !== 1.0">
+      {{ Math.round(zoomLevel * 100) }}%
+    </div>
+    
+    <!-- Zoom hint -->
+    <div class="zoom-hint">
+      Ctrl + колёсико для масштабирования
+    </div>
   </div>
 </template>
 
@@ -364,7 +477,7 @@ const props = defineProps({
   scale: { type: String, default: 'day' }
 })
 
-const emit = defineEmits(['update-task', 'update-task-live', 'delete-task', 'create-connection', 'delete-connection', 'edit-task', 'edit-connection'])
+const emit = defineEmits(['update-task', 'update-task-live', 'delete-task', 'create-connection', 'delete-connection', 'edit-task', 'edit-connection', 'change-scale'])
 
 const containerRef = ref(null)
 const timelineRef = ref(null)
@@ -392,9 +505,49 @@ const hoveredConnectionId = ref(null)
 // Hierarchy expansion state
 const expandedTaskIds = ref(new Set())
 
+// Sidebar state
+const sidebarExpanded = ref(false) // Show all columns
+const sidebarSize = ref(280) // Width
+const isResizingSidebar = ref(false)
+
+const toggleSidebarExpanded = () => {
+  sidebarExpanded.value = !sidebarExpanded.value
+  // Adjust width when expanding
+  if (sidebarExpanded.value) {
+    sidebarSize.value = 700
+  } else {
+    sidebarSize.value = 280
+  }
+}
+
+const startSidebarResize = (event) => {
+  isResizingSidebar.value = true
+  document.addEventListener('mousemove', handleSidebarResize)
+  document.addEventListener('mouseup', stopSidebarResize)
+}
+
+const handleSidebarResize = (event) => {
+  if (!isResizingSidebar.value) return
+  const newWidth = event.clientX
+  sidebarSize.value = Math.max(200, Math.min(1000, newWidth))
+}
+
+const stopSidebarResize = () => {
+  isResizingSidebar.value = false
+  document.removeEventListener('mousemove', handleSidebarResize)
+  document.removeEventListener('mouseup', stopSidebarResize)
+}
+
+// Zoom state
+const zoomLevel = ref(1.0) // 1.0 = normal, affects cellWidth
+const MIN_ZOOM = 0.3
+const MAX_ZOOM = 3.0
+
 const rowHeight = 48
 const parentRowHeight = 16 // Thin line for expanded parents
-const cellWidth = computed(() => {
+
+// Base cell widths for each scale
+const baseCellWidth = computed(() => {
   switch (props.scale) {
     case 'day': return 40
     case 'week': return 100
@@ -402,6 +555,41 @@ const cellWidth = computed(() => {
     default: return 40
   }
 })
+
+// Actual cell width with zoom applied
+const cellWidth = computed(() => {
+  return Math.round(baseCellWidth.value * zoomLevel.value)
+})
+
+// Handle mouse wheel zoom
+const handleWheel = (event) => {
+  if (!event.ctrlKey) return // Only zoom with Ctrl+wheel
+  
+  event.preventDefault()
+  
+  const delta = event.deltaY > 0 ? -0.1 : 0.1
+  const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel.value + delta))
+  
+  // Check if we should switch scales
+  const scales = ['month', 'week', 'day']
+  const currentScaleIndex = scales.indexOf(props.scale)
+  
+  // Switch to more detailed scale when zooming in past threshold
+  if (newZoom > 2.0 && currentScaleIndex > 0) {
+    emit('change-scale', scales[currentScaleIndex - 1])
+    zoomLevel.value = 1.0
+    return
+  }
+  
+  // Switch to less detailed scale when zooming out past threshold
+  if (newZoom < 0.5 && currentScaleIndex < scales.length - 1) {
+    emit('change-scale', scales[currentScaleIndex + 1])
+    zoomLevel.value = 1.0
+    return
+  }
+  
+  zoomLevel.value = newZoom
+}
 
 // Calculate date range based on tasks
 const dateRange = computed(() => {
@@ -604,40 +792,106 @@ const getVisibleAncestor = (taskId) => {
   return null
 }
 
+// Get the appropriate child task for a connection to expanded parent
+// Based on connection type: connections to START go to earliest child, to END go to latest child
+const getChildForConnection = (parentId, connectionType, isFrom) => {
+  const children = getChildren(parentId)
+  if (children.length === 0) return parentId
+  
+  // Check if parent is expanded
+  if (!expandedTaskIds.value.has(parentId)) return parentId
+  
+  // Determine which child based on connection point
+  let targetChild = null
+  
+  if (isFrom) {
+    // Connection is FROM this parent - determine by connection type start point
+    // 'start-to-X' means from start of parent → use earliest child
+    // 'finish-to-X' means from end of parent → use latest child
+    if (connectionType.startsWith('start')) {
+      // From START - use earliest starting child
+      targetChild = children.reduce((earliest, child) => 
+        new Date(child.start_date) < new Date(earliest.start_date) ? child : earliest
+      )
+    } else {
+      // From FINISH - use latest ending child
+      targetChild = children.reduce((latest, child) => 
+        new Date(child.end_date) > new Date(latest.end_date) ? child : latest
+      )
+    }
+  } else {
+    // Connection is TO this parent - determine by connection type end point
+    // 'X-to-start' means to start of parent → use earliest child
+    // 'X-to-finish' means to end of parent → use latest child  
+    if (connectionType.endsWith('start')) {
+      // To START - use earliest starting child
+      targetChild = children.reduce((earliest, child) => 
+        new Date(child.start_date) < new Date(earliest.start_date) ? child : earliest
+      )
+    } else {
+      // To FINISH - use latest ending child
+      targetChild = children.reduce((latest, child) => 
+        new Date(child.end_date) > new Date(latest.end_date) ? child : latest
+      )
+    }
+  }
+  
+  return targetChild ? targetChild.id : parentId
+}
+
 // Connections with hidden tasks redirected to their visible parent
+// AND parent connections redirected to appropriate children when expanded
 const visibleConnections = computed(() => {
   const result = []
   const seenConnections = new Set()
   
   props.connections.forEach(conn => {
-    const fromTaskId = conn.from_task_id
-    const toTaskId = conn.to_task_id
+    let fromTaskId = conn.from_task_id
+    let toTaskId = conn.to_task_id
     
-    // Get visible task IDs (redirect to parent if hidden)
+    // First, handle hidden children → redirect to visible parent
     const visibleFromId = getVisibleAncestor(fromTaskId)
     const visibleToId = getVisibleAncestor(toTaskId)
     
     // Skip if either task has no visible ancestor
     if (!visibleFromId || !visibleToId) return
     
-    // Skip self-connections (when both map to same parent)
-    if (visibleFromId === visibleToId) return
+    // Update with visible ancestors
+    fromTaskId = visibleFromId
+    toTaskId = visibleToId
+    
+    // Second, handle expanded parents → redirect to appropriate child
+    const fromTask = tasksMap.value.get(fromTaskId)
+    const toTask = tasksMap.value.get(toTaskId)
+    
+    // If FROM task is an expanded parent, redirect to appropriate child
+    if (fromTask && hasChildren(fromTaskId) && expandedTaskIds.value.has(fromTaskId)) {
+      fromTaskId = getChildForConnection(fromTaskId, conn.arrow_type, true)
+    }
+    
+    // If TO task is an expanded parent, redirect to appropriate child
+    if (toTask && hasChildren(toTaskId) && expandedTaskIds.value.has(toTaskId)) {
+      toTaskId = getChildForConnection(toTaskId, conn.arrow_type, false)
+    }
+    
+    // Skip self-connections
+    if (fromTaskId === toTaskId) return
     
     // Create unique key to avoid duplicate connections
-    const key = `${visibleFromId}-${visibleToId}-${conn.arrow_type}`
+    const key = `${fromTaskId}-${toTaskId}-${conn.arrow_type}`
     if (seenConnections.has(key)) return
     seenConnections.add(key)
     
     // If connection is unchanged, use original
-    if (visibleFromId === fromTaskId && visibleToId === toTaskId) {
+    if (fromTaskId === conn.from_task_id && toTaskId === conn.to_task_id) {
       result.push(conn)
     } else {
-      // Create modified connection pointing to visible ancestors
+      // Create modified connection pointing to redirected tasks
       result.push({
         ...conn,
-        id: `inherited-${conn.id}`,
-        from_task_id: visibleFromId,
-        to_task_id: visibleToId,
+        id: `redirected-${conn.id}-${fromTaskId}-${toTaskId}`,
+        from_task_id: fromTaskId,
+        to_task_id: toTaskId,
         isInherited: true
       })
     }
@@ -769,17 +1023,68 @@ const getParentTaskStyle = (task) => {
   }
 }
 
+const formatDate = (date) => {
+  return format(new Date(date), 'MMM d, yyyy')
+}
+
+const formatDateShort = (date) => {
+  return format(new Date(date), 'dd.MM')
+}
+
 const getTaskDuration = (task) => {
-  return differenceInDays(new Date(task.end_date), new Date(task.start_date))
+  const start = new Date(task.start_date)
+  const end = new Date(task.end_date)
+  return Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1
+}
+
+const getTaskConnections = (taskId) => {
+  const from = props.connections.filter(c => c.from_task_id === taskId).length
+  const to = props.connections.filter(c => c.to_task_id === taskId).length
+  return { from, to }
+}
+
+// Format connection type to Russian short form
+const formatConnectionTypeShort = (type) => {
+  const types = {
+    'finish-to-start': 'КН',
+    'start-to-start': 'НН',
+    'finish-to-finish': 'КК',
+    'start-to-finish': 'НК'
+  }
+  return types[type] || type
+}
+
+// Get predecessors (tasks that have arrows TO this task)
+const getTaskPredecessors = (taskId) => {
+  return props.connections
+    .filter(c => c.to_task_id === taskId)
+    .map(c => {
+      const task = tasksMap.value.get(c.from_task_id)
+      return {
+        id: c.id,
+        taskName: task?.title || 'Неизвестно',
+        type: formatConnectionTypeShort(c.arrow_type)
+      }
+    })
+}
+
+// Get successors (tasks that this task has arrows TO)
+const getTaskSuccessors = (taskId) => {
+  return props.connections
+    .filter(c => c.from_task_id === taskId)
+    .map(c => {
+      const task = tasksMap.value.get(c.to_task_id)
+      return {
+        id: c.id,
+        taskName: task?.title || 'Неизвестно',
+        type: formatConnectionTypeShort(c.arrow_type)
+      }
+    })
 }
 
 const getTaskTooltip = (task) => {
   const duration = getTaskDuration(task)
-  return `${task.title}\n${formatDate(task.start_date)} — ${formatDate(task.end_date)}\nDuration: ${duration} day(s)\nProgress: ${task.progress}%`
-}
-
-const formatDate = (date) => {
-  return format(new Date(date), 'MMM d, yyyy')
+  return `${task.title}\n${formatDate(task.start_date)} — ${formatDate(task.end_date)}\nДлительность: ${duration} дн.\nПрогресс: ${task.progress}%`
 }
 
 const isToday = (date) => {
@@ -962,15 +1267,19 @@ const handleTaskMouseDown = (event, task) => {
   if (event.button !== 0) return
   
   if (event.shiftKey) {
-    // Shift+click: add to selection
-    selectedTaskIds.value.add(task.id)
+    // Shift+click: toggle in selection
+    if (selectedTaskIds.value.has(task.id)) {
+      selectedTaskIds.value.delete(task.id)
+    } else {
+      selectedTaskIds.value.add(task.id)
+    }
   } else {
-    // Regular click: toggle if already selected, otherwise select only this
-    if (selectedTaskIds.value.has(task.id) && selectedTaskIds.value.size === 1) {
-      // If this is the only selected task and we click it again - deselect
+    // Regular click
+    if (selectedTaskIds.value.has(task.id)) {
+      // Clicking on already selected task - deselect it
       selectedTaskIds.value.delete(task.id)
       return // Don't start drag
-    } else if (!selectedTaskIds.value.has(task.id)) {
+    } else {
       // Clicking on unselected task - select only it
       selectedTaskIds.value.clear()
       selectedTaskIds.value.add(task.id)
@@ -1248,6 +1557,8 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', stopResize)
   document.removeEventListener('mousemove', handleConnectionDrag)
   document.removeEventListener('mouseup', stopConnection)
+  document.removeEventListener('mousemove', handleSidebarResize)
+  document.removeEventListener('mouseup', stopSidebarResize)
 })
 </script>
 
@@ -1261,33 +1572,166 @@ onUnmounted(() => {
 
 /* Sidebar */
 .gantt-sidebar {
-  width: var(--sidebar-width);
+  position: relative;
   border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   background: var(--bg-secondary);
+  flex-shrink: 0;
 }
 
 .sidebar-header {
-  height: 60px;
-  padding: 0 20px;
+  height: 40px;
+  padding: 0 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--border-subtle);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
+.sidebar-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-header-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.sidebar-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--bg-tertiary);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+}
+
+.sidebar-toggle-btn:hover {
+  background: var(--accent-primary);
+  color: white;
+}
+
 .task-count {
   background: var(--bg-tertiary);
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
   color: var(--accent-primary);
+}
+
+/* Resize handle */
+.sidebar-resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: ew-resize;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.sidebar-resize-handle:hover {
+  background: var(--accent-primary);
+}
+
+/* Table header */
+.sidebar-table-header {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px 0 36px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Table columns */
+.table-col {
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.col-name { flex: 2; min-width: 120px; }
+.col-dates { width: 100px; font-size: 11px; }
+.col-duration { width: 40px; justify-content: center; font-size: 11px; }
+.col-progress { width: 40px; justify-content: center; font-size: 11px; position: relative; }
+.col-predecessors, .col-successors { 
+  flex: 1; 
+  min-width: 120px; 
+  flex-direction: column; 
+  align-items: flex-start;
+  gap: 2px;
+  font-size: 10px;
+  overflow: hidden;
+}
+.col-actions { width: 50px; justify-content: flex-end; gap: 2px; }
+
+.connection-detail {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.conn-task-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.conn-type {
+  font-size: 9px;
+  padding: 1px 4px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.no-connections {
+  color: var(--text-muted);
+}
+
+.sidebar-task.sidebar-expanded {
+  padding: 0 8px 0 36px;
+}
+
+.sidebar-task.sidebar-expanded .task-title-text {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 1px;
 }
 
 .sidebar-content {
@@ -1658,7 +2102,25 @@ onUnmounted(() => {
   opacity: 0.8;
   display: flex;
   align-items: center;
-  padding-left: 8px;
+  padding-left: 4px;
+}
+
+.parent-collapse-btn {
+  font-size: 8px;
+  padding: 0 2px;
+  margin-right: 2px;
+  line-height: 1;
+  height: 12px;
+  min-width: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.3);
+  border-radius: 2px;
+}
+
+.parent-collapse-btn:hover {
+  background: rgba(0,0,0,0.5);
 }
 
 .parent-task-title {
@@ -1930,6 +2392,36 @@ onUnmounted(() => {
   font-weight: 500;
   z-index: 1000;
   box-shadow: var(--shadow-md);
+}
+
+.zoom-indicator {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--accent-primary);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 1000;
+  box-shadow: var(--shadow-md);
+}
+
+.zoom-hint {
+  position: absolute;
+  bottom: 16px;
+  right: 80px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 10px;
+  z-index: 1000;
+  box-shadow: var(--shadow-sm);
+  opacity: 0.7;
 }
 
 /* Popup animation */

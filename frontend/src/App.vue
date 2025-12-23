@@ -52,6 +52,7 @@
         @delete-connection="deleteConnection"
         @edit-task="editTask"
         @edit-connection="editConnection"
+        @change-scale="changeScale"
       />
     </main>
     
@@ -390,6 +391,11 @@ const timeScales = [
   { label: 'Неделя', value: 'week' },
   { label: 'Месяц', value: 'month' }
 ]
+
+// Change scale from zoom
+const changeScale = (newScale) => {
+  currentScale.value = newScale
+}
 
 const taskForm = reactive({
   title: '',
