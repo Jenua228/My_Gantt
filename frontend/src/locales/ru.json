@@ -1,0 +1,100 @@
+{
+  "app": {
+    "title": "Диаграмма Ганта",
+    "loadDemo": "Демо-данные",
+    "addTask": "Добавить задачу"
+  },
+  "scales": {
+    "day": "День",
+    "week": "Неделя",
+    "month": "Месяц"
+  },
+  "sidebar": {
+    "tasks": "Задачи",
+    "name": "Название",
+    "dates": "Даты",
+    "days": "Дней",
+    "progress": "%",
+    "predecessors": "Предшественники",
+    "successors": "Последователи",
+    "noTasks": "Нет задач",
+    "noTasksHint": "Нажмите \"Добавить задачу\" или \"Демо-данные\"",
+    "collapseColumns": "Свернуть столбцы",
+    "showAllColumns": "Показать все столбцы",
+    "parent": "Родитель",
+    "parentShort": "Р"
+  },
+  "task": {
+    "edit": "Редактировать",
+    "delete": "Удалить",
+    "collapse": "Свернуть",
+    "expand": "Развернуть",
+    "connectFromStart": "Соединить от начала",
+    "connectFromEnd": "Соединить от конца",
+    "duration": "Длительность",
+    "daysUnit": "дн.",
+    "unknown": "Неизвестно"
+  },
+  "taskModal": {
+    "newTask": "Новая задача",
+    "editTask": "Редактирование задачи",
+    "title": "Название задачи",
+    "titlePlaceholder": "Введите название",
+    "description": "Описание",
+    "descriptionPlaceholder": "Необязательное описание",
+    "startDate": "Дата начала",
+    "endDate": "Дата окончания",
+    "progress": "Прогресс",
+    "color": "Цвет",
+    "parentTask": "Родительская задача (иерархия)",
+    "noParent": "— Нет родителя (корневая задача) —",
+    "parentHint": "Подзадача будет сгруппирована под родителем",
+    "connections": "Связи задачи",
+    "predecessorsSection": "Предшественники",
+    "successorsSection": "Последователи",
+    "noPredecessors": "Нет предшествующих связей",
+    "noSuccessors": "Нет последующих связей",
+    "addPredecessor": "Добавить предшественника:",
+    "addSuccessor": "Добавить последователя:",
+    "selectTask": "— Выберите задачу —",
+    "removeConnection": "Удалить связь",
+    "cancel": "Отмена",
+    "save": "Сохранить",
+    "create": "Создать"
+  },
+  "connectionModal": {
+    "title": "Редактирование связи",
+    "arrowColor": "Цвет стрелки",
+    "lineStyle": "Стиль линии",
+    "connectionType": "Тип связи",
+    "solid": "Сплошная",
+    "dashed": "Пунктирная",
+    "dotted": "Точечная"
+  },
+  "connectionTypes": {
+    "finishToStart": "Окончание → Начало",
+    "startToStart": "Начало → Начало",
+    "finishToFinish": "Окончание → Окончание",
+    "startToFinish": "Начало → Окончание",
+    "FS": "КН",
+    "SS": "НН",
+    "FF": "КК",
+    "SF": "НК"
+  },
+  "connectionPopup": {
+    "title": "Информация о связи",
+    "from": "Откуда:",
+    "to": "Куда:",
+    "type": "Тип:",
+    "edit": "Изменить",
+    "delete": "Удалить"
+  },
+  "selection": {
+    "tasksSelected": "Выбрано задач:",
+    "shiftClickHint": "(Shift+Клик для добавления)"
+  },
+  "zoom": {
+    "hint": "Ctrl + колёсико для масштабирования"
+  }
+}
+

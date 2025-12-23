@@ -1,0 +1,100 @@
+{
+  "app": {
+    "title": "Gantt Chart",
+    "loadDemo": "Load Demo",
+    "addTask": "Add Task"
+  },
+  "scales": {
+    "day": "Day",
+    "week": "Week",
+    "month": "Month"
+  },
+  "sidebar": {
+    "tasks": "Tasks",
+    "name": "Name",
+    "dates": "Dates",
+    "days": "Days",
+    "progress": "%",
+    "predecessors": "Predecessors",
+    "successors": "Successors",
+    "noTasks": "No tasks",
+    "noTasksHint": "Click \"Add Task\" or \"Load Demo\"",
+    "collapseColumns": "Collapse columns",
+    "showAllColumns": "Show all columns",
+    "parent": "Parent",
+    "parentShort": "P"
+  },
+  "task": {
+    "edit": "Edit",
+    "delete": "Delete",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "connectFromStart": "Connect from start",
+    "connectFromEnd": "Connect from end",
+    "duration": "Duration",
+    "daysUnit": "days",
+    "unknown": "Unknown"
+  },
+  "taskModal": {
+    "newTask": "New Task",
+    "editTask": "Edit Task",
+    "title": "Task Title",
+    "titlePlaceholder": "Enter task title",
+    "description": "Description",
+    "descriptionPlaceholder": "Optional description",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "progress": "Progress",
+    "color": "Color",
+    "parentTask": "Parent Task (Hierarchy)",
+    "noParent": "— No parent (root task) —",
+    "parentHint": "Making this a subtask will group it under the parent",
+    "connections": "Task Connections",
+    "predecessorsSection": "Predecessors",
+    "successorsSection": "Successors",
+    "noPredecessors": "No predecessor connections",
+    "noSuccessors": "No successor connections",
+    "addPredecessor": "Add Predecessor:",
+    "addSuccessor": "Add Successor:",
+    "selectTask": "— Select task —",
+    "removeConnection": "Remove connection",
+    "cancel": "Cancel",
+    "save": "Save",
+    "create": "Create"
+  },
+  "connectionModal": {
+    "title": "Edit Connection",
+    "arrowColor": "Arrow Color",
+    "lineStyle": "Line Style",
+    "connectionType": "Connection Type",
+    "solid": "Solid",
+    "dashed": "Dashed",
+    "dotted": "Dotted"
+  },
+  "connectionTypes": {
+    "finishToStart": "Finish → Start",
+    "startToStart": "Start → Start",
+    "finishToFinish": "Finish → Finish",
+    "startToFinish": "Start → Finish",
+    "FS": "FS",
+    "SS": "SS",
+    "FF": "FF",
+    "SF": "SF"
+  },
+  "connectionPopup": {
+    "title": "Connection Info",
+    "from": "From:",
+    "to": "To:",
+    "type": "Type:",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "selection": {
+    "tasksSelected": "Tasks selected:",
+    "shiftClickHint": "(Shift+Click to add)"
+  },
+  "zoom": {
+    "hint": "Ctrl + wheel to zoom"
+  }
+}
+

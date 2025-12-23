@@ -7,10 +7,23 @@
           <rect x="3" y="10" width="14" height="4" rx="1" />
           <rect x="3" y="16" width="10" height="4" rx="1" />
         </svg>
-        <span>Диаграмма Ганта</span>
+        <span>{{ $t('app.title') }}</span>
       </div>
       
       <div class="header-controls">
+        <!-- Language Selector -->
+        <div class="language-selector">
+          <button 
+            v-for="lang in languages" 
+            :key="lang.code"
+            :class="['lang-btn', { active: currentLanguage === lang.code }]"
+            @click="changeLanguage(lang.code)"
+            :title="lang.name"
+          >
+            {{ lang.flag }}
+          </button>
+        </div>
+        
         <div class="time-scale-selector">
           <button 
             v-for="scale in timeScales" 
@@ -18,7 +31,7 @@
             :class="['scale-btn', { active: currentScale === scale.value }]"
             @click="currentScale = scale.value"
           >
-            {{ scale.label }}
+            {{ $t(`scales.${scale.value}`) }}
           </button>
         </div>
         
@@ -27,7 +40,7 @@
             <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
             <path d="M3 3v5h5" />
           </svg>
-          Демо-данные
+          {{ $t('app.loadDemo') }}
         </button>
         
         <button class="btn btn-primary" @click="openCreateTaskModal">
@@ -35,7 +48,7 @@
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          Добавить задачу
+          {{ $t('app.addTask') }}
         </button>
       </div>
     </header>
@@ -61,7 +74,7 @@
       <div v-if="showTaskModal" class="modal-overlay" @click.self="closeTaskModal">
         <div class="modal modal-lg">
           <div class="modal-header">
-            <h2>{{ editingTask ? 'Редактирование задачи' : 'Новая задача' }}</h2>
+            <h2>{{ editingTask ? $t('taskModal.editTask') : $t('taskModal.newTask') }}</h2>
             <button class="btn btn-icon" @click="closeTaskModal">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -72,33 +85,33 @@
           
           <div class="modal-body">
             <div class="form-group">
-              <label>Название задачи</label>
-              <input v-model="taskForm.title" type="text" placeholder="Введите название" />
+              <label>{{ $t('taskModal.title') }}</label>
+              <input v-model="taskForm.title" type="text" :placeholder="$t('taskModal.titlePlaceholder')" />
             </div>
             
             <div class="form-group">
-              <label>Описание</label>
-              <textarea v-model="taskForm.description" rows="2" placeholder="Необязательное описание"></textarea>
+              <label>{{ $t('taskModal.description') }}</label>
+              <textarea v-model="taskForm.description" rows="2" :placeholder="$t('taskModal.descriptionPlaceholder')"></textarea>
             </div>
             
             <div class="form-row">
               <div class="form-group">
-                <label>Дата начала</label>
+                <label>{{ $t('taskModal.startDate') }}</label>
                 <input v-model="taskForm.start_date" type="datetime-local" />
               </div>
               <div class="form-group">
-                <label>Дата окончания</label>
+                <label>{{ $t('taskModal.endDate') }}</label>
                 <input v-model="taskForm.end_date" type="datetime-local" />
               </div>
             </div>
             
             <div class="form-row">
               <div class="form-group">
-                <label>Прогресс ({{ taskForm.progress }}%)</label>
+                <label>{{ $t('taskModal.progress') }} ({{ taskForm.progress }}%)</label>
                 <input v-model.number="taskForm.progress" type="range" min="0" max="100" />
               </div>
               <div class="form-group">
-                <label>Цвет</label>
+                <label>{{ $t('taskModal.color') }}</label>
                 <div class="color-picker-wrapper">
                   <div class="color-preview" :style="{ backgroundColor: taskForm.color }"></div>
                   <input v-model="taskForm.color" type="color" />
@@ -109,9 +122,9 @@
             
             <!-- Parent Task (Hierarchy) Section -->
             <div class="form-group">
-              <label>Родительская задача (иерархия)</label>
+              <label>{{ $t('taskModal.parentTask') }}</label>
               <select v-model="taskForm.parent_id">
-                <option :value="null">— Нет родителя (корневая задача) —</option>
+                <option :value="null">{{ $t('taskModal.noParent') }}</option>
                 <option 
                   v-for="task in availableHierarchyParents" 
                   :key="task.id" 
@@ -120,7 +133,7 @@
                   {{ task.title }}
                 </option>
               </select>
-              <span class="form-hint">Подзадача будет сгруппирована под родителем</span>
+              <span class="form-hint">{{ $t('taskModal.parentHint') }}</span>
             </div>
             
             <!-- Connection Section (Arrows) -->
@@ -131,7 +144,7 @@
                   <polyline points="15 3 21 3 21 9" />
                   <line x1="10" y1="14" x2="21" y2="3" />
                 </svg>
-                Связи задачи
+                {{ $t('taskModal.connections') }}
               </div>
               
               <!-- Parent Connections (Arrows FROM other tasks TO this task) -->
@@ -142,7 +155,7 @@
                 >
                   <div class="connection-label">
                     <span class="arrow-icon">→</span>
-                    <span>Предшественники</span>
+                    <span>{{ $t('taskModal.predecessorsSection') }}</span>
                     <span class="connection-count" v-if="existingParentConnections.length">
                       {{ existingParentConnections.length }}
                     </span>
@@ -176,7 +189,7 @@
                       <button 
                         class="btn-remove" 
                         @click="removeParentConnection(conn.id)"
-                        title="Удалить связь"
+                        :title="$t('taskModal.removeConnection')"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                           <line x1="18" y1="6" x2="6" y2="18" />
@@ -185,15 +198,15 @@
                       </button>
                     </div>
                   </div>
-                  <div v-else class="no-connections">Нет предшествующих связей</div>
+                  <div v-else class="no-connections">{{ $t('taskModal.noPredecessors') }}</div>
                   
                   <!-- Add new parent connection -->
                   <div class="add-connection">
-                    <div class="add-connection-title">Добавить предшественника:</div>
+                    <div class="add-connection-title">{{ $t('taskModal.addPredecessor') }}</div>
                     <div class="form-row">
                       <div class="form-group">
                         <select v-model="taskForm.conn_parent_task_id">
-                          <option :value="null">— Выберите задачу —</option>
+                          <option :value="null">{{ $t('taskModal.selectTask') }}</option>
                           <option 
                             v-for="task in availableParentTasks" 
                             :key="task.id" 
@@ -205,10 +218,10 @@
                       </div>
                       <div class="form-group">
                         <select v-model="taskForm.conn_parent_connection_type" :disabled="!taskForm.conn_parent_task_id">
-                          <option value="finish-to-start">Окончание → Начало</option>
-                          <option value="finish-to-finish">Окончание → Окончание</option>
-                          <option value="start-to-start">Начало → Начало</option>
-                          <option value="start-to-finish">Начало → Окончание</option>
+                          <option value="finish-to-start">{{ $t('connectionTypes.finishToStart') }}</option>
+                          <option value="finish-to-finish">{{ $t('connectionTypes.finishToFinish') }}</option>
+                          <option value="start-to-start">{{ $t('connectionTypes.startToStart') }}</option>
+                          <option value="start-to-finish">{{ $t('connectionTypes.startToFinish') }}</option>
                         </select>
                       </div>
                     </div>
@@ -224,7 +237,7 @@
                 >
                   <div class="connection-label">
                     <span class="arrow-icon">←</span>
-                    <span>Последователи</span>
+                    <span>{{ $t('taskModal.successorsSection') }}</span>
                     <span class="connection-count" v-if="existingChildConnections.length">
                       {{ existingChildConnections.length }}
                     </span>
@@ -258,7 +271,7 @@
                       <button 
                         class="btn-remove" 
                         @click="removeChildConnection(conn.id)"
-                        title="Удалить связь"
+                        :title="$t('taskModal.removeConnection')"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                           <line x1="18" y1="6" x2="6" y2="18" />
@@ -267,15 +280,15 @@
                       </button>
                     </div>
                   </div>
-                  <div v-else class="no-connections">Нет последующих связей</div>
+                  <div v-else class="no-connections">{{ $t('taskModal.noSuccessors') }}</div>
                   
                   <!-- Add new child connection -->
                   <div class="add-connection">
-                    <div class="add-connection-title">Добавить последователя:</div>
+                    <div class="add-connection-title">{{ $t('taskModal.addSuccessor') }}</div>
                     <div class="form-row">
                       <div class="form-group">
                         <select v-model="taskForm.conn_child_task_id">
-                          <option :value="null">— Выберите задачу —</option>
+                          <option :value="null">{{ $t('taskModal.selectTask') }}</option>
                           <option 
                             v-for="task in availableChildTasks" 
                             :key="task.id" 
@@ -287,10 +300,10 @@
                       </div>
                       <div class="form-group">
                         <select v-model="taskForm.conn_child_connection_type" :disabled="!taskForm.conn_child_task_id">
-                          <option value="finish-to-start">Окончание → Начало</option>
-                          <option value="finish-to-finish">Окончание → Окончание</option>
-                          <option value="start-to-start">Начало → Начало</option>
-                          <option value="start-to-finish">Начало → Окончание</option>
+                          <option value="finish-to-start">{{ $t('connectionTypes.finishToStart') }}</option>
+                          <option value="finish-to-finish">{{ $t('connectionTypes.finishToFinish') }}</option>
+                          <option value="start-to-start">{{ $t('connectionTypes.startToStart') }}</option>
+                          <option value="start-to-finish">{{ $t('connectionTypes.startToFinish') }}</option>
                         </select>
                       </div>
                     </div>
@@ -301,9 +314,9 @@
           </div>
           
           <div class="modal-footer">
-            <button class="btn btn-secondary" @click="closeTaskModal">Отмена</button>
+            <button class="btn btn-secondary" @click="closeTaskModal">{{ $t('taskModal.cancel') }}</button>
             <button class="btn btn-primary" @click="saveTask">
-              {{ editingTask ? 'Сохранить' : 'Создать' }}
+              {{ editingTask ? $t('taskModal.save') : $t('taskModal.create') }}
             </button>
           </div>
         </div>
@@ -315,7 +328,7 @@
       <div v-if="showConnectionModal" class="modal-overlay" @click.self="closeConnectionModal">
         <div class="modal modal-sm">
           <div class="modal-header">
-            <h2>Редактирование связи</h2>
+            <h2>{{ $t('connectionModal.title') }}</h2>
             <button class="btn btn-icon" @click="closeConnectionModal">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -326,7 +339,7 @@
           
           <div class="modal-body">
             <div class="form-group">
-              <label>Цвет стрелки</label>
+              <label>{{ $t('connectionModal.arrowColor') }}</label>
               <div class="color-picker-wrapper">
                 <div class="color-preview" :style="{ backgroundColor: connectionForm.arrow_color }"></div>
                 <input v-model="connectionForm.arrow_color" type="color" />
@@ -335,28 +348,28 @@
             </div>
             
             <div class="form-group">
-              <label>Стиль линии</label>
+              <label>{{ $t('connectionModal.lineStyle') }}</label>
               <select v-model="connectionForm.arrow_style">
-                <option value="solid">Сплошная</option>
-                <option value="dashed">Пунктирная</option>
-                <option value="dotted">Точечная</option>
+                <option value="solid">{{ $t('connectionModal.solid') }}</option>
+                <option value="dashed">{{ $t('connectionModal.dashed') }}</option>
+                <option value="dotted">{{ $t('connectionModal.dotted') }}</option>
               </select>
             </div>
             
             <div class="form-group">
-              <label>Тип связи</label>
+              <label>{{ $t('connectionModal.connectionType') }}</label>
               <select v-model="connectionForm.arrow_type">
-                <option value="finish-to-start">Окончание → Начало</option>
-                <option value="start-to-start">Начало → Начало</option>
-                <option value="finish-to-finish">Окончание → Окончание</option>
-                <option value="start-to-finish">Начало → Окончание</option>
+                <option value="finish-to-start">{{ $t('connectionTypes.finishToStart') }}</option>
+                <option value="start-to-start">{{ $t('connectionTypes.startToStart') }}</option>
+                <option value="finish-to-finish">{{ $t('connectionTypes.finishToFinish') }}</option>
+                <option value="start-to-finish">{{ $t('connectionTypes.startToFinish') }}</option>
               </select>
             </div>
           </div>
           
           <div class="modal-footer">
-            <button class="btn btn-secondary" @click="closeConnectionModal">Отмена</button>
-            <button class="btn btn-primary" @click="saveConnection">Сохранить</button>
+            <button class="btn btn-secondary" @click="closeConnectionModal">{{ $t('taskModal.cancel') }}</button>
+            <button class="btn btn-primary" @click="saveConnection">{{ $t('taskModal.save') }}</button>
           </div>
         </div>
       </div>
@@ -366,12 +379,29 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import GanttChart from './components/GanttChart.vue'
 import { taskApi, connectionApi } from './api'
+import { setLanguage } from './i18n'
+
+const { t, locale } = useI18n()
 
 const tasks = ref([])
 const connections = ref([])
 const currentScale = ref('day')
+
+// Language support
+const languages = [
+  { code: 'ru', name: 'Русский', flag: 'RU' },
+  { code: 'en', name: 'English', flag: 'EN' },
+  { code: 'ar', name: 'العربية', flag: 'AR' }
+]
+
+const currentLanguage = computed(() => locale.value)
+
+const changeLanguage = (lang) => {
+  setLanguage(lang)
+}
 
 // Map for O(1) task lookup
 const tasksMap = computed(() => {
@@ -387,9 +417,9 @@ const parentConnectionsExpanded = ref(true)
 const childConnectionsExpanded = ref(true)
 
 const timeScales = [
-  { label: 'День', value: 'day' },
-  { label: 'Неделя', value: 'week' },
-  { label: 'Месяц', value: 'month' }
+  { value: 'day' },
+  { value: 'week' },
+  { value: 'month' }
 ]
 
 // Change scale from zoom
@@ -875,6 +905,34 @@ onUnmounted(() => {
   gap: 16px;
 }
 
+.language-selector {
+  display: flex;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  border: 1px solid var(--border-subtle);
+  gap: 2px;
+}
+
+.lang-btn {
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.lang-btn:hover {
+  background: var(--bg-elevated);
+}
+
+.lang-btn.active {
+  background: var(--accent-primary);
+}
+
 .time-scale-selector {
   display: flex;
   background: var(--bg-tertiary);
@@ -1209,4 +1267,5 @@ onUnmounted(() => {
 .add-connection .form-group {
   margin-bottom: 0;
 }
+
 </style>

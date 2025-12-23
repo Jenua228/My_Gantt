@@ -11,14 +11,14 @@
     >
       <div class="sidebar-header">
         <div class="sidebar-header-left">
-          <span>Задачи</span>
+          <span>{{ $t('sidebar.tasks') }}</span>
           <span class="task-count">{{ tasks.length }}</span>
         </div>
         <div class="sidebar-header-controls">
           <button 
             class="sidebar-toggle-btn" 
             @click="toggleSidebarExpanded"
-            :title="sidebarExpanded ? 'Свернуть столбцы' : 'Показать все столбцы'"
+            :title="sidebarExpanded ? $t('sidebar.collapseColumns') : $t('sidebar.showAllColumns')"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="7" height="7" />
@@ -32,12 +32,12 @@
       
       <!-- Table Header -->
       <div class="sidebar-table-header" v-if="sidebarExpanded">
-        <div class="table-col col-name">Название</div>
-        <div class="table-col col-dates">Даты</div>
-        <div class="table-col col-duration">Дней</div>
-        <div class="table-col col-progress">%</div>
-        <div class="table-col col-predecessors">Предшественники</div>
-        <div class="table-col col-successors">Последователи</div>
+        <div class="table-col col-name">{{ $t('sidebar.name') }}</div>
+        <div class="table-col col-dates">{{ $t('sidebar.dates') }}</div>
+        <div class="table-col col-duration">{{ $t('sidebar.days') }}</div>
+        <div class="table-col col-progress">{{ $t('sidebar.progress') }}</div>
+        <div class="table-col col-predecessors">{{ $t('sidebar.predecessors') }}</div>
+        <div class="table-col col-successors">{{ $t('sidebar.successors') }}</div>
         <div class="table-col col-actions"></div>
       </div>
       
@@ -81,7 +81,7 @@
             <template v-if="!sidebarExpanded">
               <div class="task-info">
                 <span class="task-title">
-                  <span v-if="hasChildren(task.id)" class="parent-badge">Родитель</span>
+                  <span v-if="hasChildren(task.id)" class="parent-badge">{{ $t('sidebar.parent') }}</span>
                   {{ task.title }}
                 </span>
                 <span class="task-dates">
@@ -89,13 +89,13 @@
                 </span>
               </div>
               <div class="task-actions">
-                <button class="action-btn" @click.stop="$emit('edit-task', task)" title="Редактировать">
+                <button class="action-btn" @click.stop="$emit('edit-task', task)" :title="$t('task.edit')">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                   </svg>
                 </button>
-                <button class="action-btn danger" @click.stop="$emit('delete-task', task.id)" title="Удалить">
+                <button class="action-btn danger" @click.stop="$emit('delete-task', task.id)" :title="$t('task.delete')">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="3 6 5 6 21 6" />
                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
@@ -108,7 +108,7 @@
             <template v-else>
               <div class="table-col col-name">
                 <span class="task-title-text">
-                  <span v-if="hasChildren(task.id)" class="parent-badge">Р</span>
+                  <span v-if="hasChildren(task.id)" class="parent-badge">{{ $t('sidebar.parentShort') }}</span>
                   {{ task.title }}
                 </span>
               </div>
@@ -141,13 +141,13 @@
                 <span v-else class="no-connections">—</span>
               </div>
               <div class="table-col col-actions">
-                <button class="action-btn" @click.stop="$emit('edit-task', task)" title="Редактировать">
+                <button class="action-btn" @click.stop="$emit('edit-task', task)" :title="$t('task.edit')">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                   </svg>
                 </button>
-                <button class="action-btn danger" @click.stop="$emit('delete-task', task.id)" title="Удалить">
+                <button class="action-btn danger" @click.stop="$emit('delete-task', task.id)" :title="$t('task.delete')">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="3 6 5 6 21 6" />
                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
@@ -164,8 +164,8 @@
             <line x1="8" y1="2" x2="8" y2="6" />
             <line x1="3" y1="10" x2="21" y2="10" />
           </svg>
-          <p>Нет задач</p>
-          <span>Нажмите "Добавить задачу" или "Демо-данные"</span>
+          <p>{{ $t('sidebar.noTasks') }}</p>
+          <span>{{ $t('sidebar.noTasksHint') }}</span>
         </div>
       </div>
       
@@ -344,7 +344,7 @@
                 class="expand-toggle-btn parent-collapse-btn"
                 @click.stop="toggleExpand(task.id)"
                 @mousedown.stop
-                title="Свернуть"
+                :title="$t('task.collapse')"
               >▼</button>
               <span class="parent-task-title">{{ task.title }}</span>
             </div>
@@ -375,7 +375,7 @@
                   class="expand-toggle-btn"
                   @click.stop="toggleExpand(task.id)"
                   @mousedown.stop
-                  :title="task.isExpanded ? 'Свернуть' : 'Развернуть'"
+                  :title="task.isExpanded ? $t('task.collapse') : $t('task.expand')"
                 >
                   {{ task.isExpanded ? '▼' : '▶' }}
                 </button>
@@ -393,12 +393,12 @@
             <div 
               class="connection-handle handle-left" 
               @mousedown.stop="startConnection($event, task, 'start')"
-              title="Соединить от начала"
+              :title="$t('task.connectFromStart')"
             ></div>
             <div 
               class="connection-handle handle-right"
               @mousedown.stop="startConnection($event, task, 'end')"
-              title="Соединить от конца"
+              :title="$t('task.connectFromEnd')"
             ></div>
             
             <!-- Resize handles -->
@@ -419,33 +419,33 @@
     <Transition name="popup">
       <div v-if="connectionInfo" class="connection-popup" :style="connectionPopupStyle">
         <div class="popup-header">
-          <span>Информация о связи</span>
+          <span>{{ $t('connectionPopup.title') }}</span>
           <button class="popup-close" @click="connectionInfo = null">×</button>
         </div>
         <div class="popup-content">
           <div class="popup-row">
-            <span class="popup-label">Откуда:</span>
+            <span class="popup-label">{{ $t('connectionPopup.from') }}</span>
             <span class="popup-value" :style="{ color: getTaskById(connectionInfo.from_task_id)?.color }">
-              {{ getTaskById(connectionInfo.from_task_id)?.title || 'Неизвестно' }}
+              {{ getTaskById(connectionInfo.from_task_id)?.title || $t('task.unknown') }}
             </span>
           </div>
           <div class="popup-row">
-            <span class="popup-label">Куда:</span>
+            <span class="popup-label">{{ $t('connectionPopup.to') }}</span>
             <span class="popup-value" :style="{ color: getTaskById(connectionInfo.to_task_id)?.color }">
-              {{ getTaskById(connectionInfo.to_task_id)?.title || 'Неизвестно' }}
+              {{ getTaskById(connectionInfo.to_task_id)?.title || $t('task.unknown') }}
             </span>
           </div>
           <div class="popup-row">
-            <span class="popup-label">Тип:</span>
+            <span class="popup-label">{{ $t('connectionPopup.type') }}</span>
             <span class="popup-value">{{ formatConnectionType(connectionInfo.arrow_type) }}</span>
           </div>
         </div>
         <div class="popup-footer">
           <button class="btn btn-secondary btn-sm" @click="$emit('edit-connection', connectionInfo); connectionInfo = null">
-            Изменить
+            {{ $t('connectionPopup.edit') }}
           </button>
           <button class="btn btn-danger btn-sm" @click="$emit('delete-connection', connectionInfo.id); connectionInfo = null">
-            Удалить
+            {{ $t('connectionPopup.delete') }}
           </button>
         </div>
       </div>
@@ -453,7 +453,7 @@
     
     <!-- Selection count indicator -->
     <div v-if="selectedTaskIds.size > 1" class="selection-indicator">
-      Выбрано задач: {{ selectedTaskIds.size }} (Shift+Клик для добавления)
+      {{ $t('selection.tasksSelected') }} {{ selectedTaskIds.size }} {{ $t('selection.shiftClickHint') }}
     </div>
     
     <!-- Zoom indicator -->
@@ -463,14 +463,17 @@
     
     <!-- Zoom hint -->
     <div class="zoom-hint">
-      Ctrl + колёсико для масштабирования
+      {{ $t('zoom.hint') }}
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { format, addDays, addWeeks, addMonths, startOfDay, differenceInDays, isToday as checkIsToday, parseISO } from 'date-fns'
+
+const { t } = useI18n()
 
 const props = defineProps({
   tasks: { type: Array, default: () => [] },
@@ -1046,13 +1049,13 @@ const getTaskConnections = (taskId) => {
 
 // Format connection type to Russian short form
 const formatConnectionTypeShort = (type) => {
-  const types = {
-    'finish-to-start': 'КН',
-    'start-to-start': 'НН',
-    'finish-to-finish': 'КК',
-    'start-to-finish': 'НК'
+  const typeMap = {
+    'finish-to-start': 'FS',
+    'start-to-start': 'SS',
+    'finish-to-finish': 'FF',
+    'start-to-finish': 'SF'
   }
-  return types[type] || type
+  return t(`connectionTypes.${typeMap[type]}`) || type
 }
 
 // Get predecessors (tasks that have arrows TO this task)
@@ -1074,7 +1077,7 @@ const getTaskPredecessors = (taskId) => {
         seen.add(key)
         result.push({
           id: conn.id,
-          taskName: fromTask?.title || 'Неизвестно',
+          taskName: fromTask?.title || t('task.unknown'),
           type: formatConnectionTypeShort(conn.arrow_type)
         })
       }
@@ -1098,7 +1101,7 @@ const getTaskSuccessors = (taskId) => {
         seen.add(key)
         result.push({
           id: conn.id,
-          taskName: toTask?.title || 'Неизвестно',
+          taskName: toTask?.title || t('task.unknown'),
           type: formatConnectionTypeShort(conn.arrow_type)
         })
       }
@@ -1110,7 +1113,7 @@ const getTaskSuccessors = (taskId) => {
 
 const getTaskTooltip = (task) => {
   const duration = getTaskDuration(task)
-  return `${task.title}\n${formatDate(task.start_date)} — ${formatDate(task.end_date)}\nДлительность: ${duration} дн.\nПрогресс: ${task.progress}%`
+  return `${task.title}\n${formatDate(task.start_date)} — ${formatDate(task.end_date)}\n${t('task.duration')}: ${duration} ${t('task.daysUnit')}\n${t('taskModal.progress')}: ${task.progress}%`
 }
 
 const isToday = (date) => {
@@ -1122,13 +1125,13 @@ const getTaskById = (id) => {
 }
 
 const formatConnectionType = (type) => {
-  const types = {
-    'finish-to-start': 'Окончание → Начало',
-    'start-to-start': 'Начало → Начало',
-    'finish-to-finish': 'Окончание → Окончание',
-    'start-to-finish': 'Начало → Окончание'
+  const typeMap = {
+    'finish-to-start': 'finishToStart',
+    'start-to-start': 'startToStart',
+    'finish-to-finish': 'finishToFinish',
+    'start-to-finish': 'startToFinish'
   }
-  return types[type] || type
+  return t(`connectionTypes.${typeMap[type]}`) || type
 }
 
 const showConnectionInfo = (event, conn) => {

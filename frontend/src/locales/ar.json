@@ -1,0 +1,100 @@
+{
+  "app": {
+    "title": "مخطط جانت",
+    "loadDemo": "تحميل العرض",
+    "addTask": "إضافة مهمة"
+  },
+  "scales": {
+    "day": "يوم",
+    "week": "أسبوع",
+    "month": "شهر"
+  },
+  "sidebar": {
+    "tasks": "المهام",
+    "name": "الاسم",
+    "dates": "التواريخ",
+    "days": "أيام",
+    "progress": "%",
+    "predecessors": "السابقون",
+    "successors": "اللاحقون",
+    "noTasks": "لا توجد مهام",
+    "noTasksHint": "انقر على \"إضافة مهمة\" أو \"تحميل العرض\"",
+    "collapseColumns": "طي الأعمدة",
+    "showAllColumns": "إظهار كل الأعمدة",
+    "parent": "الأصل",
+    "parentShort": "أ"
+  },
+  "task": {
+    "edit": "تحرير",
+    "delete": "حذف",
+    "collapse": "طي",
+    "expand": "توسيع",
+    "connectFromStart": "ربط من البداية",
+    "connectFromEnd": "ربط من النهاية",
+    "duration": "المدة",
+    "daysUnit": "يوم",
+    "unknown": "غير معروف"
+  },
+  "taskModal": {
+    "newTask": "مهمة جديدة",
+    "editTask": "تحرير المهمة",
+    "title": "عنوان المهمة",
+    "titlePlaceholder": "أدخل عنوان المهمة",
+    "description": "الوصف",
+    "descriptionPlaceholder": "وصف اختياري",
+    "startDate": "تاريخ البدء",
+    "endDate": "تاريخ الانتهاء",
+    "progress": "التقدم",
+    "color": "اللون",
+    "parentTask": "المهمة الأصلية (التسلسل)",
+    "noParent": "— بدون أصل (مهمة رئيسية) —",
+    "parentHint": "سيتم تجميع هذه المهمة الفرعية تحت الأصل",
+    "connections": "روابط المهمة",
+    "predecessorsSection": "السابقون",
+    "successorsSection": "اللاحقون",
+    "noPredecessors": "لا توجد روابط سابقة",
+    "noSuccessors": "لا توجد روابط لاحقة",
+    "addPredecessor": "إضافة سابق:",
+    "addSuccessor": "إضافة لاحق:",
+    "selectTask": "— اختر مهمة —",
+    "removeConnection": "إزالة الرابط",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "create": "إنشاء"
+  },
+  "connectionModal": {
+    "title": "تحرير الرابط",
+    "arrowColor": "لون السهم",
+    "lineStyle": "نمط الخط",
+    "connectionType": "نوع الرابط",
+    "solid": "متصل",
+    "dashed": "متقطع",
+    "dotted": "منقط"
+  },
+  "connectionTypes": {
+    "finishToStart": "نهاية ← بداية",
+    "startToStart": "بداية ← بداية",
+    "finishToFinish": "نهاية ← نهاية",
+    "startToFinish": "بداية ← نهاية",
+    "FS": "نب",
+    "SS": "بب",
+    "FF": "نن",
+    "SF": "بن"
+  },
+  "connectionPopup": {
+    "title": "معلومات الرابط",
+    "from": "من:",
+    "to": "إلى:",
+    "type": "النوع:",
+    "edit": "تحرير",
+    "delete": "حذف"
+  },
+  "selection": {
+    "tasksSelected": "المهام المحددة:",
+    "shiftClickHint": "(Shift+انقر للإضافة)"
+  },
+  "zoom": {
+    "hint": "Ctrl + عجلة للتكبير"
+  }
+}
+
