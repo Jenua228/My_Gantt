@@ -1300,6 +1300,11 @@ const handleSidebarTaskClick = (event, task) => {
 // Handle task mousedown with shift for multi-select
 const handleTaskMouseDown = (event, task) => {
   if (event.button !== 0) return
+
+  // Если уже перетаскиваем - выходим
+  if (isDragging.value) return
+  
+  let shouldStartDrag = true
   
   if (event.shiftKey) {
     // Shift+click: toggle in selection
@@ -1312,15 +1317,18 @@ const handleTaskMouseDown = (event, task) => {
     // Regular click
     if (selectedTaskIds.value.has(task.id)) {
       // Clicking on already selected task - deselect it
-      selectedTaskIds.value.delete(task.id)
-      return // Don't start drag
+      //selectedTaskIds.value.delete(task.id)
+     // return // Don't start drag
+     shouldStartDrag = true
     } else {
       // Clicking on unselected task - select only it
       selectedTaskIds.value.clear()
       selectedTaskIds.value.add(task.id)
+      shouldStartDrag = true
     }
     // Start dragging all selected tasks
-    startDrag(event, task)
+    if (shouldStartDrag) {
+    startDrag(event, task)}
   }
 }
 
