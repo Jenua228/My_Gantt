@@ -472,8 +472,18 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { format, addDays, addWeeks, addMonths, startOfDay, differenceInDays, isToday as checkIsToday, parseISO } from 'date-fns'
+import { ru, enUS, ar } from 'date-fns/locale'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+
+// Get date-fns locale based on current language
+const dateFnsLocale = computed(() => {
+  switch (locale.value) {
+    case 'ru': return ru
+    case 'ar': return ar
+    default: return enUS
+  }
+})
 
 const props = defineProps({
   tasks: { type: Array, default: () => [] },
@@ -493,6 +503,8 @@ const taskTitleRefs = reactive({})
 const selectedTaskIds = ref(new Set())
 const isDragging = ref(false)
 const dragStartPositions = ref({}) // Store initial positions of selected tasks
+const dragMouseMoved = ref(false) // Track if mouse actually moved during drag
+const dragStartPoint = ref({ x: 0, y: 0 }) // Track initial mouse position
 
 const draggingTask = ref(null)
 const dragOffset = ref({ x: 0, y: 0 })
@@ -908,26 +920,27 @@ const timeUnits = computed(() => {
   const units = []
   let current = new Date(dateRange.value.start)
   const end = dateRange.value.end
+  const loc = dateFnsLocale.value
   
   while (current <= end) {
     let label, sublabel, isStrong = false
     
     switch (props.scale) {
       case 'day':
-        label = format(current, 'd')
-        sublabel = format(current, 'EEE')
+        label = format(current, 'd', { locale: loc })
+        sublabel = format(current, 'EEE', { locale: loc })
         isStrong = current.getDay() === 1
         current = addDays(current, 1)
         break
       case 'week':
-        label = format(current, "'W'w")
-        sublabel = format(current, 'MMM yyyy')
+        label = format(current, "'W'w", { locale: loc })
+        sublabel = format(current, 'MMM yyyy', { locale: loc })
         isStrong = current.getDate() <= 7
         current = addWeeks(current, 1)
         break
       case 'month':
-        label = format(current, 'MMM')
-        sublabel = format(current, 'yyyy')
+        label = format(current, 'MMM', { locale: loc })
+        sublabel = format(current, 'yyyy', { locale: loc })
         isStrong = current.getMonth() === 0
         current = addMonths(current, 1)
         break
@@ -1028,11 +1041,11 @@ const getParentTaskStyle = (task) => {
 }
 
 const formatDate = (date) => {
-  return format(new Date(date), 'MMM d, yyyy')
+  return format(new Date(date), 'MMM d, yyyy', { locale: dateFnsLocale.value })
 }
 
 const formatDateShort = (date) => {
-  return format(new Date(date), 'dd.MM')
+  return format(new Date(date), 'dd.MM', { locale: dateFnsLocale.value })
 }
 
 const getTaskDuration = (task) => {
@@ -1304,8 +1317,6 @@ const handleTaskMouseDown = (event, task) => {
   // Если уже перетаскиваем - выходим
   if (isDragging.value) return
   
-  let shouldStartDrag = true
-  
   if (event.shiftKey) {
     // Shift+click: toggle in selection
     if (selectedTaskIds.value.has(task.id)) {
@@ -1313,29 +1324,29 @@ const handleTaskMouseDown = (event, task) => {
     } else {
       selectedTaskIds.value.add(task.id)
     }
-  } else {
-    // Regular click
-    if (selectedTaskIds.value.has(task.id)) {
-      // Clicking on already selected task - deselect it
-      //selectedTaskIds.value.delete(task.id)
-     // return // Don't start drag
-     shouldStartDrag = true
-    } else {
-      // Clicking on unselected task - select only it
-      selectedTaskIds.value.clear()
-      selectedTaskIds.value.add(task.id)
-      shouldStartDrag = true
-    }
-    // Start dragging all selected tasks
-    if (shouldStartDrag) {
-    startDrag(event, task)}
+    return
   }
+  
+  // Regular click/drag
+  const wasSelected = selectedTaskIds.value.has(task.id)
+  
+  if (!wasSelected) {
+    // Clicking on unselected task - select only it and start drag
+    selectedTaskIds.value.clear()
+    selectedTaskIds.value.add(task.id)
+  }
+  
+  // Start dragging (will track if mouse actually moved)
+  startDrag(event, task, wasSelected)
 }
 
 // Drag handling for multiple tasks
-const startDrag = (event, task) => {
+const startDrag = (event, task, wasAlreadySelected = false) => {
   draggingTask.value = task
+  draggingTask.value._wasAlreadySelected = wasAlreadySelected // Track for deselect on click
   isDragging.value = true
+  dragMouseMoved.value = false
+  dragStartPoint.value = { x: event.clientX, y: event.clientY }
   
   const taskEl = event.currentTarget
   const rect = taskEl.getBoundingClientRect()
@@ -1364,6 +1375,16 @@ const startDrag = (event, task) => {
 
 const handleDrag = (event) => {
   if (!draggingTask.value || !timelineRef.value) return
+  
+  // Check if mouse actually moved (threshold of 5px)
+  const dx = event.clientX - dragStartPoint.value.x
+  const dy = event.clientY - dragStartPoint.value.y
+  if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+    dragMouseMoved.value = true
+  }
+  
+  // Don't update positions until mouse actually moved
+  if (!dragMouseMoved.value) return
   
   const timelineRect = timelineRef.value.getBoundingClientRect()
   const scrollLeft = timelineRef.value.scrollLeft
@@ -1427,8 +1448,16 @@ const handleDrag = (event) => {
 }
 
 const stopDrag = () => {
-  // Emit final updates to save to server
-  if (draggingTask.value && Object.keys(dragStartPositions.value).length > 0) {
+  const wasAlreadySelected = draggingTask.value?._wasAlreadySelected
+  const taskId = draggingTask.value?.id
+  
+  // If mouse didn't move, this was a click - deselect if was already selected
+  if (!dragMouseMoved.value && wasAlreadySelected && taskId) {
+    selectedTaskIds.value.delete(taskId)
+  }
+  
+  // Emit final updates to save to server (only if mouse moved)
+  if (dragMouseMoved.value && draggingTask.value && Object.keys(dragStartPositions.value).length > 0) {
     selectedTaskIds.value.forEach(id => {
       const task = tasksMap.value.get(id)
       if (task) {
@@ -1444,6 +1473,7 @@ const stopDrag = () => {
   
   draggingTask.value = null
   isDragging.value = false
+  dragMouseMoved.value = false
   dragStartPositions.value = {}
   document.removeEventListener('mousemove', handleDrag)
   document.removeEventListener('mouseup', stopDrag)
@@ -1537,7 +1567,12 @@ const handleConnectionDrag = (event) => {
   
   const fromLeft = getDateOffset(connectingFrom.value.start_date)
   const fromRight = getDateOffset(connectingFrom.value.end_date)
-  const fromY = connectingFrom.value.row_index * rowHeight + rowHeight / 2
+  
+  // Use displayRow for correct Y position (accounts for hierarchy)
+  const fromDisplayRow = getTaskDisplayRow(connectingFrom.value.id)
+  const fromY = fromDisplayRow !== -1 
+    ? fromDisplayRow * rowHeight + rowHeight / 2 
+    : connectingFrom.value.row_index * rowHeight + rowHeight / 2
   
   const startX = connectingType.value === 'start' ? fromLeft : fromRight
   const endX = event.clientX - timelineRect.left + scrollLeft
@@ -1549,17 +1584,31 @@ const handleConnectionDrag = (event) => {
 const stopConnection = (event) => {
   if (connectingFrom.value && timelineRef.value) {
     const timelineRect = timelineRef.value.getBoundingClientRect()
+    const scrollLeft = timelineRef.value.scrollLeft
     const scrollTop = timelineRef.value.scrollTop
+    const x = event.clientX - timelineRect.left + scrollLeft
     const y = event.clientY - timelineRect.top - 60 + scrollTop
-    const targetRowIndex = Math.floor(y / rowHeight)
+    const targetDisplayRow = Math.floor(y / rowHeight)
     
-    const targetTask = sortedTasks.value.find(t => t.row_index === targetRowIndex)
+    // Find task by display row (accounts for hierarchy)
+    const targetTask = displayTasks.value.find(t => t.displayRow === targetDisplayRow)
     
     if (targetTask && targetTask.id !== connectingFrom.value.id) {
+      // Determine if dropped on start or end of target task
+      const targetLeft = getDateOffset(targetTask.start_date)
+      const targetRight = getDateOffset(targetTask.end_date)
+      const targetCenter = (targetLeft + targetRight) / 2
+      
+      // If drop point is closer to start, connect to start; otherwise to finish
+      const toEnd = x > targetCenter ? 'finish' : 'start'
+      const fromEnd = connectingType.value === 'start' ? 'start' : 'finish'
+      
+      const arrowType = `${fromEnd}-to-${toEnd}`
+      
       emit('create-connection', {
         from_task_id: connectingFrom.value.id,
         to_task_id: targetTask.id,
-        arrow_type: connectingType.value === 'start' ? 'start-to-start' : 'finish-to-start'
+        arrow_type: arrowType
       })
     }
   }
@@ -1809,12 +1858,18 @@ onUnmounted(() => {
 
 /* Hierarchy styles for sidebar */
 .sidebar-task.is-parent {
-  background: var(--bg-tertiary);
+  background: var(--bg-secondary);
 }
 
 .sidebar-task.is-child {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-secondary);
   position: relative;
+}
+
+/* Selection must override parent/child backgrounds */
+.sidebar-task.is-selected.is-parent,
+.sidebar-task.is-selected.is-child {
+  background: rgba(0, 212, 170, 0.15) !important;
 }
 
 /* Visual connector line for child tasks in sidebar */
